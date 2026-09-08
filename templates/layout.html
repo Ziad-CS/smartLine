@@ -1,22 +1,71 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="../static/layout.css">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="../static/layout.css" />
+    <link rel="stylesheet" href="../static/bootstrap.css" />
 
-  <title>Smart Line: {% title block %}{% endblock %}</title>
-</head>
+    <title>Smart Line: {% block title %}{% endblock %}</title>
+  </head>
   <body>
-    <nav class="">
-
+    <nav class="bg-light border navbar navbar-expand-md navbar-light">
+      <div class="container-fluid">
+        <a class="navbar-brand" href="/">
+          <img src="../static/logo.png" alt="logo" class="logo" />
+        </a>
+        <div class="collapse navbar-collapse" id="navbar">
+          {% if "user_id" in session and session.get("login_state", -1) == 0 %}
+          <ul>
+            <li class="nav-item"><a class="nav-link" href="#"> home </a></li>
+            <li class="nav-item">
+              <button>Company <span>⌄</span></button>
+              <ul class="dropdown-menu">
+                <li class="nav-item"><a href="#">About us</a></li>
+                <li class="nav-item"><a href="#">Careers</a></li>
+                <li class="nav-item"><a href="#">Contact</a></li>
+              </ul>
+            </li>
+            <li class="nav-item"><a class="nav-link" href="#"> see </a></li>
+            <li class="nav-item"><a class="nav-link" href="#"> timeline </a></li>
+            <li class="nav-item"><a class="nav-link" href="#"> accept</a></li>
+            <li class="nav-item"><a class="nav-link" href="#"> what </a></li>
+            <li class="nav-item"><a class="nav-link" href="#"> contanct us for</a></li>
+          </ul>
+          <ul>
+            <li class="nav-item">
+              <a class="nav-link" href="/logout"> logout</a>
+            </li>
+          </ul>
+          {% elif session["login_state"] == 2 %}
+          <ul>
+            <li class="nav-item"><a class="nav-link" href="#"> home </a></li>
+            <li class="nav-item"><a class="nav-link" href="#"> see </a></li>
+            <li class="nav-item"><a class="nav-link" href="#"> timeline </a></li>
+            <li class="nav-item"><a class="nav-link" href="#"> contanct us for</a></li>
+          </ul>
+          <ul>
+            <li class="nav-item">
+              <a class="nav-link" href="/register"> register </a>
+            </li>
+          </ul>
+          {% else %}
+          <ul>
+            <li class="nav-item">
+              <a class="nav-link" href="/login"> join us</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/register"> no proplem</a>
+            </li>
+          </ul>
+          {% endif %}
+        </div>
+      </div>
     </nav>
-    <main class="">
-      {% main block %}{% endblock %}
-    </main>
-    <footer>
-
-    </footer>
+    <main class="">{% block main %}{% endblock %}</main>
+    <footer></footer>
     <script src="../static/layout.js"></script>
+    <script src="../static/bootstrap.js"></script>
+    <!-- {% block verification %}{% endblock%} -->
   </body>
 </html>

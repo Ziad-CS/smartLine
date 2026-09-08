@@ -1,0 +1,12 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    verification
+{% endblock %}
+
+{% block main %}
+    <form action="/verification"method="post">
+      <input type="text" placeholder="OTP" name="code">
+      <input type="submit" value="verify">
+    </form>
+{% endblock %}

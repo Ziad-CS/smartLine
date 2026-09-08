@@ -1,7 +1,23 @@
 main
 {
+  background-color: #fff;
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
   align-content: center;
+}
+.none {
+  display: none;
+}
+nav {
+
+}
+nav ul  {
+  width: fit-content;
+}
+#navbar {
+  flex-grow: 0;
+}
+.logo {
+  width: 200px;
 }

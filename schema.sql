@@ -54,3 +54,5 @@ CREATE TABLE service_logs (
     FOREIGN KEY (queue_id) REFERENCES queues(id),
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
+
+-- sqlite3 smartline.db < schema.sql

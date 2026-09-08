@@ -1,0 +1,14 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    guest
+{% endblock %}
+
+{% block main %}
+    <form action="/guest" method="post">
+        <div class="mb-3">
+            <input autocomplete="off" autofocus class="form-control mx-auto w-auto" name="name" placeholder="your name" type="text" id="name">
+        </div>
+        <input class="btn btn-primary" type="submit" value="Continue as Guest"></input>
+    </form>
+{% endblock %}

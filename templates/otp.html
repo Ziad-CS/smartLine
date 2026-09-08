@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign-in Code</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f2f2f2; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased;">
+
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #f2f2f2; width: 100% !important;">
+    <tr>
+      <td align="center" style="padding: 40px 15px;">
+
+        <!-- Main Card Container -->
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width: 520px; background-color: white; border-radius: 4px; overflow: hidden; text-align: center;">
+
+          <!-- Top Section: Icon & Header -->
+          <tr>
+            <td align="center" style="padding: 45px 30px 25px 30px;">
+              <!-- Circle Icon Placeholder -->
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center">
+                <tr>
+                  <td align="center" valign="middle">
+                    <img src="https://raw.githubusercontent.com/Ziad-CS/smartLine/main/static/logo-white-background.png" alt="logo" style="display: block; margin: 0 auto; width: 100%; max-width: 100%; height: auto; box-shadow: 0 0 12px 2px rgb(255, 255, 255, 0.5);">
+                  </td>
+                </tr>
+              </table>
+
+              <h1 style="margin: 25px 0 0 0; font-size: 24px; font-weight: 700; color: #111111; letter-spacing: -0.5px;">
+                Sign-in Code
+              </h1>
+            </td>
+          </tr>
+
+          <!-- Inner White Box (OTP Box) -->
+          <tr>
+            <td align="center" style="padding: 0 40px 35px 40px;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #ffffff; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); text-align: center;">
+                <tr>
+                  <td style="padding: 40px 20px;">
+                    <p style="margin: 0 0 25px 0; font-size: 14px; color: #555555;">
+                      Here's your sign-in code:
+                    </p>
+
+                    <!-- The Verification Code -->
+                    <div style="font-size: 32px; font-weight: 800; letter-spacing: 12px; color: #111111; font-family: 'Courier New', Courier, monospace; margin: 10px 0 25px 12px;">
+                      {{ code }}
+                    </div>
+
+                    <p style="margin: 0; font-size: 13px; color: #777777;">
+                      This code will expire soon.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Informational Notes & Disclaimer -->
+          <tr>
+            <td style="padding: 0 40px 40px 40px; text-align: center;">
+              <p style="margin: 0 0 20px 0; font-size: 12px; line-height: 18px; color: #777777;">
+                <!-- Visit <a href="#" style="color: #2c3f6d; text-decoration: none; font-weight: 600;">Account Management</a> to unenroll any authentication factors you no longer need. -->
+                 If you didn't request this code, no action is needed — the registration will  <a href="#" style="color: #2c3f6d; text-decoration: none; font-weight: 600;"> expire automatically </a> if not verified.
+              </p>
+
+              <p style="margin: 0; font-size: 11px; line-height: 17px; color: #888888;">
+                <!-- If this request did not come from you, change your account password immediately to prevent further unauthorized access. Read <a href="#" style="color: #2c3f6d; text-decoration: none;">Protecting Your Account</a> for tips on password strength. -->
+                 If someone else is trying to register using your email, simply <a href="#" style="color: #2c3f6d; text-decoration: none; font-weight: 600;"> ignore this message </a> and their attempt will expire on its own.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer Branding -->
+          <tr>
+            <td align="center" style="padding: 0 30px 35px 30px;">
+              <span style="font-size: 15px; font-weight: 900; letter-spacing: 2px; color: #737373; text-transform: uppercase;">
+                SMART LINE
+              </span>
+            </td>
+          </tr>
+
+        </table>
+
+      </td>
+    </tr>
+  </table>
+
+</body>
+</html>

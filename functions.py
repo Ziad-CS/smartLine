@@ -6,6 +6,10 @@ import random
 
 import smtplib
 from email.message import EmailMessage
+import os
+from dotenv import load_dotenv
+
+load_dotenv("email.env")
 
 db = SQL("sqlite:///smartline.db")
 
@@ -74,5 +78,5 @@ def send_otp(id) :
 
   with smtplib.SMTP("smtp.gmail.com", 587) as server :
     server.starttls()
-    server.login("smartline.authentication@gmail.com", "rufbykvqhlswvoqq")
+    server.login("smartline.authentication@gmail.com", os.environ.get("GMAIL_PASSWORD"))
     server.send_message(msg)

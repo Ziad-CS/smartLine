@@ -9,6 +9,9 @@ from email.message import EmailMessage
 import os
 from dotenv import load_dotenv
 
+import os
+from dotenv import load_dotenv
+
 load_dotenv("email.env")
 
 db = SQL("sqlite:///smartline.db")

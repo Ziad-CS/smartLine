@@ -322,7 +322,7 @@ def changePassword() :
     if len(new) < 8:
       flash("password must be at least 8 characters", category="no")
       return redirect("/profile")
-    db.execute("UPDATE users SET hash_pass = ? WHERE id = ?", new, session["user_id"])
+    db.execute("UPDATE users SET hash_pass = ? WHERE id = ?",generate_password_hashn(new), session["user_id"])
   return redirect("/profile")
 
 @app.route ("/profile/change-code/", methods=["GET"])

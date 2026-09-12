@@ -3,69 +3,232 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="stylesheet" href="../static/layout.css" />
-    <link rel="stylesheet" href="../static/bootstrap.css" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='layout.css') }}" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap.css') }}" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
 
     <title>Smart Line: {% block title %}{% endblock %}</title>
   </head>
   <body>
-    <nav class="bg-light border navbar navbar-expand-md navbar-light">
+    <nav class="bg-light border navbar navbar-expand-lg navbar-light">
+      <!-- ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼ -->
       <div class="container-fluid">
-        <a class="navbar-brand" href="/">
-          <img src="../static/logo.png" alt="logo" class="logo" />
-        </a>
-        <div class="collapse navbar-collapse" id="navbar">
-          {% if "user_id" in session and session.get("login_state", -1) == 0 %}
-          <ul>
-            <li class="nav-item"><a class="nav-link" href="#"> home </a></li>
-            <li class="nav-item">
-              <button>Company <span>⌄</span></button>
-              <ul class="dropdown-menu">
-                <li class="nav-item"><a href="#">About us</a></li>
-                <li class="nav-item"><a href="#">Careers</a></li>
-                <li class="nav-item"><a href="#">Contact</a></li>
-              </ul>
-            </li>
-            <li class="nav-item"><a class="nav-link" href="#"> see </a></li>
-            <li class="nav-item"><a class="nav-link" href="#"> timeline </a></li>
-            <li class="nav-item"><a class="nav-link" href="#"> accept</a></li>
-            <li class="nav-item"><a class="nav-link" href="#"> what </a></li>
-            <li class="nav-item"><a class="nav-link" href="#"> contanct us for</a></li>
-          </ul>
-          <ul>
-            <li class="nav-item">
-              <a class="nav-link" href="/logout"> logout</a>
-            </li>
-          </ul>
-          {% elif session["login_state"] == 2 %}
-          <ul>
-            <li class="nav-item"><a class="nav-link" href="#"> home </a></li>
-            <li class="nav-item"><a class="nav-link" href="#"> see </a></li>
-            <li class="nav-item"><a class="nav-link" href="#"> timeline </a></li>
-            <li class="nav-item"><a class="nav-link" href="#"> contanct us for</a></li>
-          </ul>
-          <ul>
-            <li class="nav-item">
-              <a class="nav-link" href="/register"> register </a>
-            </li>
-          </ul>
+        <div class="non-collapse full-width flex nav-cont">
+          <a class="navbar-brand" href="/">
+            <img src="{{ url_for('static', filename='logo.png') }}" alt="logo" class="logo" />
+          </a>
+          <span class="menu-icon">
+            <span class="sm-line"></span>
+            <span class="sm-line"></span>
+            <span class="sm-line"></span>
+          </span>
+        </div>
+        <div class="collapse navbar-collapse full-width flex nav-cont" id="navbar">
+          <a class="navbar-brand" href="/">
+            <img src="{{ url_for('static', filename='logo.png') }}" alt="logo" class="logo" />
+          </a>
+          {% if "user_id" in session and session.get("login_state", -1) == 0 and session.get("role") == "user" %}
+            <ul class="just-between unlist main-color">
+              <li class="nav-item"><a class="nav-link" href="/"> Home </a></li>
+              <li class="nav-item"><a class="nav-link" href="#"> Find a Queue </a></li>
+              <li class="nav-item"><a class="nav-link" href="#"> My Queue </a></li>
+              <li class="nav-item"><a class="nav-link" href="#"> History </a></li>
+              <li class="nav-item"><a class="nav-link" href="#"> How it works </a></li>
+              <li class="nav-item"><a class="nav-link" href="#"> Contact </a></li>
+            </ul>
+            <div class="buttons-cont" id="menuButton">
+              <button class="nav-item unbutton cap main-color" type="button">
+                {{ session.get("name") }} (Customer) <i class="bi bi-caret-down-fill"></i>
+              </button>
+              <div class="profile-dropdown-menu p-0 none" id="menu">
+                <div class="active-color cap" style="border-bottom: var(--main-color) 1px solid;"> {{ session.get("name") }} </div>
+                
+                <ul class="list-unstyled mb-0">
+                  <li class="active"> ACTIVE ROLE </li>
+                  <li><a class="dropdown-item p-1" href="/switch-role/customer">
+                    <i class="bi bi-check ms-auto active-color cap"></i> <span class="active-color cap"> Customer </span> 
+                  </a></li>
+                  {% if "prov" in my_roles %}
+                    <li><a class="dropdown-item p-1" href="/switch-role/provider">
+                      Provider 
+                    </a></li>
+                  {% endif %}
+                  {% if "manager" in my_roles %}
+                    <li><a class="dropdown-item p-1" href="/switch-role/manager">
+                      Manager
+                    </a></li>
+                  {% endif %}
+                </ul>
+
+                <!-- القسم الثاني -->
+                <ul class="list-unstyled mb-0">
+                  <li><a class="dropdown-item" href="/profile">
+                    <i class="bi bi-person"></i> Profile
+                  </a></li>
+                  <li><a class="dropdown-item text-danger" href="/logout">
+                    <i class="bi bi-power"></i> Log Out
+                  </a></li>
+                </ul>
+              </div>
+            </div>
+          {% elif session.get("login_state") == 2 %}
+
+            <ul class="just-between unlist main-color">
+              <li class="nav-item"><a class="nav-link" href="/"> Home </a></li>
+              <li class="nav-item"><a class="nav-link" href="#"> Find a Queue </a></li>
+              <li class="nav-item"><a class="nav-link" href="#"> My Queue </a></li>
+              <li class="nav-item"><a class="nav-link" href="#"> How it works </a></li>
+              <li class="nav-item"><a class="nav-link" href="#"> Contact </a></li>
+            </ul>
+            <div class="buttons-cont"id="menuButton">
+              <button class="nav-item unbutton cap main-color" type="button">
+                {{ session.get("name") }} (Guest) <i class="bi bi-caret-down-fill"></i>
+              </button>
+              <div class="profile-dropdown-menu p-0 none" id="menu">
+                <div class="active-color cap"> {{ session.get("name") }} </div>
+                <div class="comp
+                {% if 3 - session.get('serv_count', 0) <= 0 %}
+                  text-danger
+                {% endif %}
+                "> Guest ({{3 - session.get("serv_count") }} services left) </div>
+                <!-- القسم الثاني -->
+                <ul class="list-unstyled mb-0">
+                  <li><a class="dropdown-item text-success" href="/register">
+                    <i class="bi bi-person-plus"></i> Register
+                  </a></li>
+                  <li><a class="dropdown-item" href="/login">
+                    <i class="bi bi-power"></i> Log In
+                  </a></li>
+                </ul>
+              </div>
+            </div>
+          {% elif session.get("role") == "prov" %}
+            <ul class="just-between unlist main-color">
+              <li class="nav-item"><a class="nav-link" href="/"> Home </a></li>
+              <li class="nav-item"><a class="nav-link" href="#"> Dashboard </a></li>
+              <li class="nav-item"><a class="nav-link" href="#"> My Queue </a></li>
+              <li class="nav-item"><a class="nav-link" href="#"> History </a></li>
+              <li class="nav-item"><a class="nav-link" href="#"> Contact </a></li>
+            </ul>
+            <div class="buttons-cont" id="menuButton">
+              <button class="nav-item unbutton cap main-color" type="button">
+                {{ session.get("name") }} (Provider) <i class="bi bi-caret-down-fill"></i>
+              </button>
+              <div class="profile-dropdown-menu p-0 none" id="menu">
+                <div class="active-color cap"> {{ session.get("name") }} </div>
+                <div class="comp"> {{ comp }} </div>
+                <ul class="list-unstyled mb-0 ">
+                  <li class="active"> ACTIVE ROLE </li>
+                  <li><a class="dropdown-item p-1" href="/switch-role/customer">
+                    Customer
+                  </a></li>
+                  {% if "prov" in my_roles %}
+                    <li><a class="dropdown-item p-1" href="/switch-role/provider">
+                      <i class="bi bi-check ms-auto active-color cap"></i> <span class="active-color cap"> Provider </span>
+                    </a></li>
+                  {% endif %}
+                  {% if "manager" in my_roles %}
+                    <li><a class="dropdown-item p-1" href="/switch-role/manager">
+                      Manager
+                    </a></li>
+                  {% endif %}
+                </ul>
+
+                <!-- القسم الثاني -->
+                <ul class="list-unstyled mb-0">
+                  <li><a class="dropdown-item" href="/profile">
+                    <i class="bi bi-person"></i> Profile
+                  </a></li>
+                  <li><a class="dropdown-item text-danger" href="/logout">
+                    <i class="bi bi-power"></i> Log Out
+                  </a></li>
+                </ul>
+              </div>
+            </div>
+          {% elif session.get("role") == "manager" %}
+            <ul class="just-between unlist main-color">
+              <li class="nav-item"><a class="nav-link" href="/"> Home </a></li>
+              <li class="nav-item"><a class="nav-link" href="#"> Dashboard </a></li>
+              <li class="nav-item"><a class="nav-link" href="#"> Providers </a></li>
+              <li class="nav-item"><a class="nav-link" href="#"> Queues </a></li>
+              <li class="nav-item"><a class="nav-link" href="#"> Reports </a></li>
+              <li class="nav-item"><a class="nav-link" href="#"> Contact </a></li>
+            </ul>
+            <div class="buttons-cont" id="menuButton">
+              <button class="nav-item unbutton cap main-color" type="button">
+                {{ session.get("name") }} (Manager) <i class="bi bi-caret-down-fill"></i>
+              </button>
+              <div class="profile-dropdown-menu p-0 none" id="menu">
+                <div class="active-color cap"> {{ session.get("name") }} </div>
+                <div class="comp"> {{ comp }} </div>
+                <ul class="list-unstyled mb-0">
+                  <li class="active"> ACTIVE ROLE </li>
+                  <li><a class="dropdown-item p-1" href="/switch-role/customer">
+                    Customer
+                  </a></li>
+                  {% if "prov" in my_roles %}
+                    <li><a class="dropdown-item p-1" href="/switch-role/provider">
+                      Provider
+                    </a></li>
+                  {% endif %}
+                  {% if "manager" in my_roles %}
+                    <li><a class="dropdown-item p-1" href="/switch-role/manager">
+                      <i class="bi bi-check ms-auto active-color cap"></i> <span class="active-color cap"> Manager </span>
+                    </a></li>
+                  {% endif %}
+                </ul>
+
+                <!-- القسم الثاني -->
+                <ul class="list-unstyled mb-0">
+                  <li><a class="dropdown-item" href="/profile">
+                    <i class="bi bi-person"></i> Profile
+                  </a></li>
+                  <li><a class="dropdown-item text-danger" href="/logout">
+                    <i class="bi bi-power"></i> Log Out
+                  </a></li>
+                </ul>
+              </div>
+            </div>
           {% else %}
-          <ul>
-            <li class="nav-item">
-              <a class="nav-link" href="/login"> join us</a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link" href="/register"> no proplem</a>
-            </li>
-          </ul>
+            <ul class="just-between unlist main-color">
+              <li class="nav-item"><a class="nav-link" href="/"> Home </a></li>
+              <li class="nav-item"><a class="nav-link" href="#"> Find a Queue </a></li>
+              <li class="nav-item"><a class="nav-link" href="#"> How it works </a></li>
+              <li class="nav-item"><a class="nav-link" href="#"> Contact </a></li>
+            </ul>
+            <div class="buttons-cont">
+              <span class="nav-item">
+                <a class="nav-link" href="/login"> Log In</a>
+              </span>
+              <span class="nav-item">
+                <a class="nav-link" href="/register"> Register </a>
+              </span>
+            </div>
           {% endif %}
         </div>
       </div>
     </nav>
-    <main class="">{% block main %}{% endblock %}</main>
+    <main class="">
+      <div class="mt-3 flash-error">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="alert alert-{{ category }} alert-dismissible fade show d-flex align-items-center justify-content-between shadow-sm rounded-3" role="alert">
+                <div>
+                  <i class="bi bi-exclamation-circle-fill me-2"></i>
+                  {{ message }}
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+              </div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+      </div>
+      {% block main %}{% endblock %}
+    </main>
     <footer></footer>
-    <script src="../static/layout.js"></script>
-    <script src="../static/bootstrap.js"></script>
+    <script src="{{ url_for('static', filename='layout.js') }}"></script>
+    <script src="{{ url_for('static', filename='bootstrap.js') }}"></script>
     <!-- {% block verification %}{% endblock%} -->
   </body>
 </html>

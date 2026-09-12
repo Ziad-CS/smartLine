@@ -1,0 +1,90 @@
+{% extends "layout.html" %}
+
+{% block title %}
+  Profile
+{% endblock %}
+
+{% block main %}
+  <header>
+    <h1> My Profile</h1>
+    <span> Role: {{ session.get("role") }}</span>
+    <p>Lorem ipsum dolor sit amet consectetur adipisicing elit. Sed harum</p>
+  </header>
+  <div>
+    <h2> Genral & Company Information </h2>
+    <form action="/profile/update-info" method="post">
+      <img src="https://ui-avatars.com/api/?name={{ session.get('name') }}&background=0D6EFD&color=fff" alt="Avatar" class="rounded-circle" width="64">
+      <p> {{ session.get("name") }} </p>
+      <label for="name"> Full Name </label>
+      <input type="text" value="{{ session.get('name') }}" name="name" placeholder="e.g Ziad Saleh" id="name" minlength="3" maxlength="40">
+      <label for="email"> Email </label>
+      <input type="email" value="{{ mail }}" name="mail" placeholder="name@domain.com" id="email">
+      {% if session.get("role") == "prov"%}
+        <label for="comp"> Company Name </label>
+        <input type="text" value="{{ comp }}" placeholder="Unemployed" disabled id="comp">
+        <label for="code"> Invite code </label>
+        <input type="text" value="{{ code }}" id="code" readonly>
+      {% elif session.get("role") == "manager" %}
+        <label for="comp"> Company Name </label>
+        <input type="text" value="{{ comp }}" placeholder="Enter your Company name" id="comp" name="comp">
+      {% endif %}
+      <button type="submit"> Apply Changes </button>
+    </form>
+    {% if session.get("role") == "prov"%}
+      <a href="/profile/change-code"> Change my Invite code</a>
+    {% endif %}
+  </div>
+  <div>
+    <h2> Change Password </h2>
+    <form action="/profile/change-password" method="post">
+      
+      <label for="current"> Current Password</label>
+      <input type="password" name="currentPassword" id="current" required minlength="8">
+      <label for="new"> New Password</label>
+      <input type="password" name="newPassword" id="new" required minlength="8">
+      <label for="confirm"> Confirm New Password</label>
+      <input type="password" name="confirmPassword" id="confirm" required minlength="8">
+      <button type="submit"> Update Password </button>
+    </form>
+  </div>
+  <div>
+    {% if session.get("role") == "user" %}
+      
+    {% elif session.get("role") == "prov" %}
+
+    {% elif session.get("role") == "manager" %}
+      <h2> Acount & Company Details</h2>
+        <div>
+          <p> Total Providers </p>
+          <span> {{ totalProv }} </span>
+        </div>
+        <div>
+          <p> Active Queues </p>
+          
+        </div>
+        <div>
+          <p> Your served Customers </p>
+          
+        </div>
+        <div>
+          <p> any </p>
+
+        </div>
+        <div>
+          <p> Your Rate </p>
+
+        </div>
+      {% endif %}
+  </div>
+  {% if session.get("role") == "manager" %}
+    <div>
+      <h2> Looking to Manager Providers </h2>
+      <p> Adding new providers, linking them, and view team oprations has been miced to the Team Manager!</p>
+      <a href="/manager/provider"> Go to Providers Manager </a>
+    </div>
+  {% endif %}
+  <div>
+    <h2> Account Actions</h2>
+    <a href="/logout"> Log Out </a>
+  </div>
+{% endblock %}

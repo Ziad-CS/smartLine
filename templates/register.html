@@ -7,17 +7,18 @@
 {% block main %}
     <form action="/register" method="post" onsubmit="this.querySelector('button[type=submit]').disabled=true;">
         <div class="mb-3">
-            <input name="email" autocomplete="off" autofocus type="email" placeholder="email" id="mail">
+            <input name="email" autocomplete="off" autofocus type="email" placeholder="email" id="registerEmail" value="{{ email }}" required>
         </div>
         <div class="mb-3">
-            <input name="name" autocomplete="off" type="text" placeholder="name">
+            <input name="name" autocomplete="off" type="text" placeholder="name" value="{{ name }}" minlength="3" maxlength="40" id="registerName" required>
         </div>
         <div class="mb-3">
-            <input name="password" autocomplete="off" type="password" placeholder="password">
+            <input name="password" autocomplete="off" type="password" placeholder="password" required minlength="8" id="registerPass">
         </div>
         <div class="mb-3">
-            <input name="confirmation" autocomplete="off" type="password" placeholder="confirmation password">
+            <input name="confirmation" autocomplete="off" type="password" placeholder="confirmation password" required minlength="8" id="registerConfirmation" >
         </div>
         <button class="btn btn-primary" type="submit"> Register </button>
     </form>
+    <div id="toastContainer"></div>
 {% endblock %}

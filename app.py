@@ -7,7 +7,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from functions import apology, login_required, guest_pan, send_otp
 from datetime import datetime, timedelta
 import random
-
+import string
 import smtplib
 from email.message import EmailMessage
 
@@ -31,7 +31,23 @@ def after_request(response):
   response.headers["Pragma"] = "no-cache"
   return response
 
-
+@app.context_processor
+def inject_roles():
+  if "user_id" not in session :
+    return dict(my_roles=[], comp = "")
+  id = session["user_id"]
+  user = db.execute("SELECT * FROM users WHERE id = ?", id)
+  my_roles = []
+  comp = ""
+  if len(db.execute("SELECT * FROM managers WHERE user_id = ?", id)) == 1 :
+    my_roles.append("manager")
+    comp = db.execute("SELECT * FROM managers WHERE user_id = ?", id)
+  if len(db.execute("SELECT * FROM providers WHERE user_id = ?", id)) == 1 :
+    my_roles.append("prov")
+    comp = db.execute("SELECT * FROM providers JOIN managers ON providers.manager_id = managers.id WHERE providers.user_id = ?", id)
+  if comp :
+    return dict(my_roles=my_roles, comp=comp[0]["company_name"])
+  return dict(my_roles=my_roles, comp= "" )
 @app.route("/")
 @login_required
 def index():
@@ -48,26 +64,41 @@ def register():
     password = request.form.get("password")
     confirmation = request.form.get("confirmation")
 
-    if not name:
-      return apology("entry name pls")
 
     if email:
+      if len(email) > 128 :
+        flash("the max length is 128")
+        return redirect("/register")
       check = db.execute("SELECT * FROM users WHERE email = ?", email.strip().lower())
       if check :
         if not check[0]["is_verified"] :
-          if ( datetime.now() - datetime.strptime(check[0]["created_at"], "%Y-%m-%d %H:%M:%S") ) > timedelta(minutes=5) :
+          if ( datetime.now() - datetime.strptime(check[0]["created_at"], "%Y-%m-%d %H:%M:%S") ) > timedelta(minutes=10) :
             db.execute("DELETE FROM users WHERE id = ?", check[0]["id"])
           else :
-            return apology("try again in a few minutes")
+            flash("try again in a few minutes", category="no")
+            return redirect("/register")
         else :
-          return apology("this email is already registered")
+          flash("this email is already registered", category="no")
+          return redirect("/register")
     else:
-      return apology("entry email pls")
+      flash("entry email pls", category="no")
+      return redirect("/register")
 
+    if not name:
+      flash("entry name pls", category="no")
+      return render_template("register.html", email=email, name="")
+    if len(name) > 40 or len(name) < 2 :
+      flash("the length of name should be not more than 40 or less than 3", category="no")
+      return render_template("register.html", email=email, name="")
     if not password or not confirmation or not password == confirmation:
-      return apology("type password correct and the same in two fildes")
+      flash("type password correct and the same in two fildes", category="no")
+      return render_template("register.html", email=email, name=name)
     if len(password) < 8:
-      return apology("password must be at least 8 characters")
+      flash("password must be at least 8 character", category="no")
+      return render_template("register.html", email=email, name=name)
+    if len(password) > 128:
+      flash("password must be at most 40 character", category="no")
+      return render_template("register.html", email=email, name=name)
 
     code = str(random.randint(100000, 999999))
 
@@ -75,10 +106,12 @@ def register():
                ,name , email.strip().lower(), generate_password_hash(password), code)
     session["user_id"] = db.execute("SELECT id FROM users WHERE email = ?", email.strip().lower())[0]["id"]
     session["login_state"] = 1
-    send_otp(session["user_id"])
+    session["name"] = name
+    session["role"] = "user"
+    # send_otp(session["user_id"])
     return redirect("/verification")
   else:
-    return render_template("register.html")
+    return render_template("register.html", email="", name="")
 
 
 @app.route("/verification", methods=["GET","POST"])
@@ -90,37 +123,23 @@ def verification():
     user = db.execute("SELECT * FROM users WHERE id = ?", session["user_id"])[0]
 
     if not code or not code.isdigit():
-      return apology("enter code pls")
-    if int(code) == int(user["verification_code"]) :
+      flash("enter code pls", category="no")
+      return redirect("/verification")
+    if int(code) == int(user["verification_code"]) and not ( datetime.now() - datetime.strptime(session.get("otp_expiry", "2007-09-23 18:30:00"), "%Y-%m-%d %H:%M:%S")) > timedelta(minutes=5):
       db.execute("UPDATE users SET is_verified = 1 WHERE id = ?", session["user_id"])
       session["login_state"] = 0
       return redirect("/")
     else :
-      return apology("pls enter correct code")
+      flash("pls enter correct code", category="no")
+      return redirect("/verification")
   
   else :
     check = db.execute("SELECT * FROM users WHERE id = ?", session["user_id"])
-    if ( datetime.now() - datetime.strptime(check[0]["created_at"], "%Y-%m-%d %H:%M:%S") ) > timedelta(minutes=5) :
+    if ( datetime.now() - datetime.strptime(session.get("otp_expiry", "2007-09-23 18:30:00"), "%Y-%m-%d %H:%M:%S")) > timedelta(minutes=5) :
       code = str(random.randint(100000, 999999))
       db.execute("UPDATE users SET verification_code = ? WHERE id = ?", code,session["user_id"])
       send_otp(check[0]["id"])
-      db.execute("UPDATE users SET created_at = ? WHERE id = ?", datetime.now().strftime("%Y-%m-%d %H:%M:%S"), session["user_id"])
-
-      
-    # email_html =render_template("otp.html",name=check[0]["name"] ,code=check[0]["verification_code"])
-
-    # msg = EmailMessage()
-    # msg["Subject"] = "Verify your SmartLine account"
-    # msg["From"] = "smartline.authentication@gmail.com"
-    # msg["To"] = check[0]["email"]
-    # msg.set_content(f"Your verification code is {check[0]['verification_code']}. \n"
-    # "This code will expire in 5 minutes.")
-    # msg.add_alternative(email_html, subtype="html")
-
-    # with smtplib.SMTP("smtp.gmail.com", 587) as server :
-    #   server.starttls()
-    #   server.login("smartline.authentication@gmail.com", "rufbykvqhlswvoqq")
-    #   server.send_message(msg)
+      session["otp_expiry"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     return render_template("verification.html", email=check[0]["email"])
     # , code=check[0]["verification_code"]
@@ -131,7 +150,8 @@ def access():
   if request.method == "POST" :
     name = request.form.get("name")
     if not name :
-      return apology("enter your name pls")
+      flash("enter your name pls", category="no")
+      return redirect("/guest")
     session["login_state"] = 2
     session["name"] = name
     session["serv_count"] = 0
@@ -147,41 +167,73 @@ def pan():
 def login():
   """Log user in"""
   # Forget any user_id
-  session.clear()
-
+  session.pop("user_id", None)
+  session.pop("login_state", None)
   # User reached route via POST (as by submitting a form via POST)
   if request.method == "POST":
     # Ensure username was submitted
     if not request.form.get("email"):
-      return apology("must provide email", 403)
+      flash("must provide email", category="no")
+      return redirect("/login")
 
     # Ensure password was submitted
     elif not request.form.get("password"):
-      return apology("must provide password", 403)
+      flash("must provide password", category="no")
+      return render_template("login.html", email=request.form.get("email"))
 
     # Query database for username
     user = db.execute("SELECT * FROM users WHERE email = ?", request.form.get("email", "").strip().lower())
 
     # Ensure username exists and password is correct
-    if len(user) != 1 or not check_password_hash(
-      user[0]["hash_pass"], request.form.get("password", "").strip()
-    ):
-      return apology("invalid email and/or password", 403)
+    if len(user) != 1 :
+      flash("invalid email", category="no")
+      return redirect("/login")
+    
+    if not check_password_hash(user[0]["hash_pass"], request.form.get("password", "").strip()) :
+      flash("invalid password", category="no")
+      return render_template("login.html", email=request.form.get("email"))
 
     if not user[0]["is_verified"]:
       session["user_id"] = user[0]["id"]
       session["login_state"] = 1
+      session["name"] = user[0]["name"]
+      session["role"] = "user"
       return redirect("/verification")
     # Remember which user has logged in
     session["user_id"] = user[0]["id"]
-
+    session["login_state"] = 0
+    session["name"] = user[0]["name"]
+    session["role"] = "user"
     # Redirect user to home page
     return redirect("/")
 
   # User reached route via GET (as by clicking a link or via redirect)
   else:
-    return render_template("login.html")
+    return render_template("login.html", email="")
 
+@app.route("/switch-role/<role>")
+@login_required
+@guest_pan
+def switch_role(role):
+  if role == "provider":
+      check = db.execute("SELECT * FROM providers WHERE user_id = ?", session["user_id"])
+      if not check:
+          return apology("you're not a provider")
+      session["role"] = "prov"
+      return redirect("/")
+      return redirect("/provider/queue")
+
+  elif role == "manager":
+      check = db.execute("SELECT * FROM managers WHERE user_id = ?", session["user_id"])
+      if not check:
+          return apology("you're not a manager")
+      session["role"] = "manager"
+      return redirect("/")
+      return redirect("/manager/dashboard")
+  else:
+      session["role"] = "user"
+      return redirect("/")
+      return redirect("/find")
 
 @app.route("/logout")
 def logout():
@@ -192,3 +244,100 @@ def logout():
 
   # Redirect user to login form
   return redirect("/")
+
+@app.route ("/profile")
+@login_required
+@guest_pan
+def profile() :
+    user = db.execute("SELECT * FROM users WHERE id = ?", session["user_id"])
+    comp = ""
+    code = ""
+    totalProv = ""
+    if session.get("role") == "prov" :
+      prov = db.execute("SELECT * FROM providers JOIN managers ON managers.id = providers.manager_id WHERE providers.user_id = ?", session["user_id"])
+      comp = prov[0]["company_name"]
+      code = prov[0]["invite_code"]
+      if not comp :
+        comp = ""
+    elif session.get("role") == "manager" :
+      manager = db.execute("SELECT * FROM managers WHERE user_id = ?", session["user_id"])
+      comp = manager[0]["company_name"]
+
+    return render_template("profile.html", mail=user[0]["email"],comp=comp, totalProv=totalProv,code=code)
+
+@app.route ("/profile/update-info/", methods=["POST"])
+@login_required
+@guest_pan
+def updateInfoProfile() :
+  user = db.execute("SELECT * FROM users WHERE id = ?", session["user_id"])[0]
+  name = request.form.get("name")
+  email = request.form.get("mail").strip().lower()
+  if name :
+    if len(name) < 40 and len(name) > 2 :
+      db.execute("UPDATE users SET name = ? WHERE id = ?", name, session["user_id"])
+  if email :
+    if email != user["email"] :
+      if len(email) > 128 :
+        flash("the max length is 128")
+        return redirect("/profile")
+      check = db.execute("SELECT * FROM users WHERE email = ?", email.strip().lower())
+      if check :
+        if not check[0]["is_verified"] :
+          if ( datetime.now() - datetime.strptime(check[0]["created_at"], "%Y-%m-%d %H:%M:%S") ) > timedelta(minutes=5) :
+            db.execute("DELETE FROM users WHERE id = ?", check[0]["id"])
+          else :
+            flash("try again in a few minutes", category="no")
+            return redirect("/profile")
+        else :
+          flash("this email is already registered", category="no")
+          return redirect("/profile")
+      
+        session["login_state"] = 1
+        db.execute("UPDATE users SET is_verified = 0, email = ? WHERE id = ?", email,session["user_id"])
+        return redirect("/verification")
+  
+
+
+  if session.get("role") == "manager" :
+    manager =  db.execute("SELECT * FROM managers WHERE user_id = ?", session["user_id"])[0]
+    comp = request.form.get("comp").strip()
+    if comp :
+      if comp != manager["company_name"] :
+        db.execute("UPDATE managers SET company_name = ? WHERE user_id = ?", comp, session["user_id"])
+
+  return redirect("/profile")
+
+@app.route ("/profile/change-password/", methods=["POST"])
+@login_required
+@guest_pan
+def changePassword() :
+  current = request.form.get("currentPassword")
+  new = request.form.get("newPassword")
+  confirm = request.form.get("confirmPassword")
+  user = db.execute("SELECT * FROM users WHERE id = ?", session["user_id"])[0]
+  if check_password_hash(user["hash_pass"], current.strip()):
+    if not new or not confirm or not new == confirm:
+      flash("type password correct and the same in two fildes", category="no")
+      return redirect("/profile")
+    if len(new) < 8:
+      flash("password must be at least 8 characters", category="no")
+      return redirect("/profile")
+    db.execute("UPDATE users SET hash_pass = ? WHERE id = ?", new, session["user_id"])
+  return redirect("/profile")
+
+@app.route ("/profile/change-code/", methods=["GET"])
+@login_required
+@guest_pan
+def changeCode() :
+  # code = db.execute("SELECT * FROM providers WHERE user_id = ?", session["user_id"])
+  provs = prov = db.execute("SELECT * FROM providers")
+  code = ''.join(random.choices(string.ascii_letters + string.digits, k=8))
+  for prov in provs :
+    if prov["invite_code"] != code :
+      continue
+    changeCode()
+    break
+  else :
+    db.execute("UPDATE providers SET invite_code = ? WHERE user_id = ?", code, session["user_id"])
+  return redirect("/profile")
+

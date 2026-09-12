@@ -1,42 +1,41 @@
 # import requests
-from flask import redirect, render_template, session
+from flask import Flask ,redirect, render_template, session, flash
 from functools import wraps
 from cs50 import SQL
 import random
 
 import smtplib
 from email.message import EmailMessage
-import os
 from dotenv import load_dotenv
-
 import os
-from dotenv import load_dotenv
 
 load_dotenv("email.env")
 
 db = SQL("sqlite:///smartline.db")
 
 def login_required(f):
-    """
-    Decorate routes to require login.
-
-    https://flask.palletsprojects.com/en/latest/patterns/viewdecorators/
-    """
-
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-      if ( "user_id" not in session or session.get("login_state", -1) == 1) :
-      # or (session.get("login_state") == 2 and session.get("serv_count") >= 3):
-        return redirect("/login")
-
+  @wraps(f)
+  def decorated_function(*args, **kwargs):
+    if session.get("login_state") == 2 :
+      if session.get("serv_count", 0) > 3 :
+        return redirect("/guest_pan")
+    if session.get("login_state") == 2 :
       return f(*args, **kwargs)
+    elif ( "user_id" not in session or session.get("login_state", -1) == 1) :
+    # or (session.get("login_state") == 2 and session.get("serv_count") >= 3):
+      return redirect("/login")
+    user = db.execute("SELECT * FROM users WHERE id = ?", session.get("user_id"))
+    if not user or not user[0]["is_verified"] :
+      return redirect("/login")
 
-    return decorated_function
+    return f(*args, **kwargs)
+
+  return decorated_function
 
 def guest_pan(f):
   @wraps(f)
   def decorated_function(*args, **kwargs):
-    if session.get("login_state") == 2:
+    if session.get("login_state") == 2 :
       return redirect("/guest_pan")
     
     return f(*args, **kwargs)

@@ -6,7 +6,7 @@
 
 {% block main %}
     <form action="/verification"method="post">
-      <input type="text" placeholder="OTP" name="code">
+      <input type="text" placeholder="OTP" name="code" autocomplete="off">
       <input type="submit" value="verify">
     </form>
 {% endblock %}

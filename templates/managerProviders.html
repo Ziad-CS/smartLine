@@ -1,0 +1,47 @@
+{% extends "layout.html" %}
+
+{% block title %}
+  Providers
+{% endblock %}
+
+{% block main %}
+  <div>
+    <h1 class="visually-hidden"> Providers </h1>
+
+    <section class="card mb-4">
+    <div class="card-body">
+      <h2>Add & Link Provider</h2>
+      <p> Lorem ipsum dolor sit amet consectetur adipisicing elit. Enim maiores </p>
+      <form action="/manager/providers" method="post">
+        <input type="text" autocomplete="off" placeholder="Provider Invite Code" maxlength="8" name="invite" required>
+        <button type="submit"> Link Provider </button>
+      </form>
+    </div>
+  </section>
+  <ul>
+    {% for provider in providers %}
+    <li>
+      <img src="https://ui-avatars.com/api/?name={{ provider['name'] }}&background=0D6EFD&color=fff" alt="Avatar" class="rounded-circle" width="64">
+      <div>
+        <div>
+          <h2> {{ provider["name"] }} </h2>
+          <p> {{ provider["email"] }} </p>
+        </div>
+        <div>
+          <a href="/providers/history/{{ provider['id'] }}"> Details</a>
+          <a href="/providers/closeQueue">
+            <span> Status: </span>
+            {% if provider["status"] == 'active' %}
+              <span class="badge bg-success text-white">Active</span>
+            {% else %}
+              <span class="badge bg-secondary text-white">Closed/Offline</span>
+            {% endif%}
+          </a>
+          <a href="/manager/providers/revoke/{{ provider['id'] }}"> Revoke</a>
+        </div>
+      </div>
+    </li>
+    {% endfor %}
+  </ul>
+  </div>
+{% endblock %}

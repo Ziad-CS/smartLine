@@ -31,6 +31,7 @@ def after_request(response):
   response.headers["Pragma"] = "no-cache"
   return response
 
+
 @app.context_processor
 def inject_roles():
   if "user_id" not in session :
@@ -109,6 +110,7 @@ def register():
     session["name"] = name
     session["role"] = "user"
     # send_otp(session["user_id"])
+    flash("your are registe successfuly", category="yes")
     return redirect("/verification")
   else:
     return render_template("register.html", email="", name="")
@@ -125,9 +127,11 @@ def verification():
     if not code or not code.isdigit():
       flash("enter code pls", category="no")
       return redirect("/verification")
-    if int(code) == int(user["verification_code"]) and not ( datetime.now() - datetime.strptime(session.get("otp_expiry", "2007-09-23 18:30:00"), "%Y-%m-%d %H:%M:%S")) > timedelta(minutes=5):
+    code_expired = ( datetime.now() - datetime.strptime(session.get("otp_expiry", "2007-09-23 18:30:00"), "%Y-%m-%d %H:%M:%S")) > timedelta(minutes=5);
+    if int(code) == int(user["verification_code"]) and not code_expired:
       db.execute("UPDATE users SET is_verified = 1 WHERE id = ?", session["user_id"])
       session["login_state"] = 0
+      flash("your are verification successfuly", category="yes")
       return redirect("/")
     else :
       flash("pls enter correct code", category="no")
@@ -155,13 +159,16 @@ def access():
     session["login_state"] = 2
     session["name"] = name
     session["serv_count"] = 0
+    flash("You are login as Guest and you have 3 services only", category="yes")
     return redirect("/")
   else :
     return render_template("guest.html")
 
+
 @app.route("/guest_pan", methods=["GET"])
 def pan():
   return render_template("guestPan.html")
+
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
@@ -198,6 +205,7 @@ def login():
       session["login_state"] = 1
       session["name"] = user[0]["name"]
       session["role"] = "user"
+      flash("Your Log In successfuly please verify your account", category="yes")
       return redirect("/verification")
     # Remember which user has logged in
     session["user_id"] = user[0]["id"]
@@ -210,6 +218,75 @@ def login():
   # User reached route via GET (as by clicking a link or via redirect)
   else:
     return render_template("login.html", email="")
+
+
+@app.route("/manager/providers", methods=["GET", "POST"])
+@login_required
+@guest_pan
+def managerProviders() :
+  if session.get("role") != "manager" :
+    flash("Your are not manager", category="no")
+    return redirect("/")
+
+  manager = db.execute("SELECT * FROM managers WHERE user_id = ?", session["user_id"])
+  if not manager :
+    flash("Your are not manager", category="no")
+    return redirect("/")
+
+  if request.method == "POST" :
+    code = request.form.get("invite", "").strip()
+    if not code:
+      flash("enter an invite code", category="no")
+      return redirect("/manager/providers")
+
+    provider = db.execute("SELECT * FROM providers WHERE invite_code = ?", code)
+    if not provider:
+      flash("invalid invite code", category="no")
+      return redirect("/manager/providers")
+
+    provider = provider[0]
+    if provider["manager_id"] is not None:
+      if provider["manager_id"] == manager[0]["id"] :
+        flash("this provider already belongs to your company", category="no")
+        return redirect("/manager/providers")
+      else :
+        flash("this provider already belongs to a company", category="no")
+        return redirect("/manager/providers")
+
+    db.execute("UPDATE providers SET manager_id = ? WHERE id = ?", manager[0]["id"], provider["id"])
+
+    flash("provider added successfully", category="yes")
+    return redirect("/manager/providers")
+
+  else :
+    providers = db.execute("SELECT providers.id AS id, users.name, users.email, queues.status  FROM providers JOIN users ON providers.user_id = users.id LEFT JOIN queues ON queues.provider_id = providers.id AND queues.status = 'active' WHERE manager_id = ? GROUP BY providers.id", manager[0]["id"])
+    return render_template("managerProviders.html", providers=providers)
+
+
+@app.route("/manager/providers/revoke/<prov_id>", methods=["GET"])
+@login_required
+@guest_pan
+def revoke(prov_id) :
+
+  manager = db.execute("SELECT * FROM managers WHERE user_id = ?", session["user_id"])
+  if not manager:
+    flash("Unauthorized access", category="no")
+    return redirect("/")
+  queues = db.execute("SELECT * FROM queues WHERE provider_id = ? AND status = 'active'", prov_id)
+  prov = db.execute("SELECT * FROM providers JOIN users ON providers.user_id = users.id WHERE providers.id = ? AND providers.manager_id = ?", prov_id, manager[0]["id"])
+  if prov :
+    if queues :
+      flash("The provider is in an active queue. Close the queue first.", category="no")
+      return redirect("/manager/providers")
+    else :
+      db.execute("UPDATE providers SET manager_id = NULL WHERE id = ?", prov_id)
+  else :
+    flash("Provider not found or does not belong to your company.", category="no")
+    return redirect("/manager/providers")
+  
+  flash("Provider " + prov[0]["name"] +" revoked successfully." , category="yes")
+  return redirect("/manager/providers")
+
 
 @app.route("/switch-role/<role>")
 @login_required
@@ -235,15 +312,6 @@ def switch_role(role):
       return redirect("/")
       return redirect("/find")
 
-@app.route("/logout")
-def logout():
-  """Log user out"""
-
-  # Forget any user_id
-  session.clear()
-
-  # Redirect user to login form
-  return redirect("/")
 
 @app.route ("/profile")
 @login_required
@@ -265,19 +333,29 @@ def profile() :
 
     return render_template("profile.html", mail=user[0]["email"],comp=comp, totalProv=totalProv,code=code)
 
+
 @app.route ("/profile/update-info/", methods=["POST"])
 @login_required
 @guest_pan
 def updateInfoProfile() :
   user = db.execute("SELECT * FROM users WHERE id = ?", session["user_id"])[0]
   name = request.form.get("name")
-  email = request.form.get("mail").strip().lower()
+  email = request.form.get("mail")
   if name :
     if len(name) < 40 and len(name) > 2 :
       db.execute("UPDATE users SET name = ? WHERE id = ?", name, session["user_id"])
+      session["name"] = name
+
+  if session.get("role") == "manager" :
+    manager =  db.execute("SELECT * FROM managers WHERE user_id = ?", session["user_id"])[0]
+    comp = request.form.get("comp")
+    if comp :
+      if comp.strip() != manager["company_name"] :
+        db.execute("UPDATE managers SET company_name = ? WHERE user_id = ?", comp.strip(), session["user_id"])
+
   if email :
-    if email != user["email"] :
-      if len(email) > 128 :
+    if email.strip().lower() != user["email"] :
+      if len(email.strip().lower()) > 128 :
         flash("the max length is 128")
         return redirect("/profile")
       check = db.execute("SELECT * FROM users WHERE email = ?", email.strip().lower())
@@ -295,17 +373,9 @@ def updateInfoProfile() :
         session["login_state"] = 1
         db.execute("UPDATE users SET is_verified = 0, email = ? WHERE id = ?", email,session["user_id"])
         return redirect("/verification")
-  
-
-
-  if session.get("role") == "manager" :
-    manager =  db.execute("SELECT * FROM managers WHERE user_id = ?", session["user_id"])[0]
-    comp = request.form.get("comp").strip()
-    if comp :
-      if comp != manager["company_name"] :
-        db.execute("UPDATE managers SET company_name = ? WHERE user_id = ?", comp, session["user_id"])
 
   return redirect("/profile")
+
 
 @app.route ("/profile/change-password/", methods=["POST"])
 @login_required
@@ -315,6 +385,9 @@ def changePassword() :
   new = request.form.get("newPassword")
   confirm = request.form.get("confirmPassword")
   user = db.execute("SELECT * FROM users WHERE id = ?", session["user_id"])[0]
+  if not current or not new or not confirm :
+    flash("fill all fildes please", category="no")
+    return redirect("/profile")
   if check_password_hash(user["hash_pass"], current.strip()):
     if not new or not confirm or not new == confirm:
       flash("type password correct and the same in two fildes", category="no")
@@ -322,22 +395,33 @@ def changePassword() :
     if len(new) < 8:
       flash("password must be at least 8 characters", category="no")
       return redirect("/profile")
-    db.execute("UPDATE users SET hash_pass = ? WHERE id = ?",generate_password_hashn(new), session["user_id"])
+    flash("Your are change password successfuly", category="yes")
+    db.execute("UPDATE users SET hash_pass = ? WHERE id = ?",generate_password_hash(new), session["user_id"])
+  else :
+    flash("current password is wrong", category="no")
+    return redirect("/profile")
   return redirect("/profile")
+
 
 @app.route ("/profile/change-code/", methods=["GET"])
 @login_required
 @guest_pan
 def changeCode() :
-  # code = db.execute("SELECT * FROM providers WHERE user_id = ?", session["user_id"])
-  provs = prov = db.execute("SELECT * FROM providers")
-  code = ''.join(random.choices(string.ascii_letters + string.digits, k=8))
-  for prov in provs :
-    if prov["invite_code"] != code :
-      continue
-    changeCode()
-    break
-  else :
-    db.execute("UPDATE providers SET invite_code = ? WHERE user_id = ?", code, session["user_id"])
+  while(True) :
+    code = ''.join(random.choices(string.ascii_letters + string.digits, k=8))
+    prov = db.execute("SELECT * FROM providers WHERE invite_code = ?", code)
+    if not prov :
+      break
+  db.execute("UPDATE providers SET invite_code = ? WHERE user_id = ?", code, session["user_id"])
   return redirect("/profile")
 
+
+@app.route("/logout")
+def logout():
+  """Log user out"""
+
+  # Forget any user_id
+  session.clear()
+
+  # Redirect user to login form
+  return redirect("/")

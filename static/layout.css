@@ -100,6 +100,8 @@ nav .container-fluid {
 .flash-error {
   width: 70%;
   position: fixed;
+  z-index: 99999;
+  font-size: 1.2em;
 }
 /* .flash-box {
   background-color: #0000002e !important;
@@ -108,12 +110,12 @@ nav .container-fluid {
 .alert-no {
   border: var(--bs-danger) 2px solid!important;
   color: var(--bs-danger);
-  background-color: #f8d7daa0 !important;
+  background-color: #fba4abc8 !important;
 }
 .alert-yes {
-  border: rgba(33, 141, 44, 0.6) 2px solid !important;
+  border: rgba(47, 194, 61, 0.6) 2px solid !important;
   color: rgba(33, 141, 44, 0.6);
-  background-color: rgba(215, 248, 220, 0.627) !important;
+  background-color: rgba(215, 248, 220, 0.7) !important;
 }
 #toastContainer {
   position: fixed;

@@ -1,0 +1,155 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    My Queue
+{% endblock %}
+
+{% block main %}
+    <div>
+      <h1> Queue Management </h1>
+      <p> Manage your queue and serve your customers efficiently </p>
+      <div>
+        <div>
+          <i class="bi bi-building-check"></i>
+          <h2> served this shift </h2>
+          <p> {{ servedToDay }} </p>
+          {% if servedCompare >= 0 %}
+            <span class="stat-badge badge-up good">
+              <i class="bi bi-arrow-up-short"></i> {{ servedCompare | near}}%
+            </span>
+          {% else %}
+            <span class="stat-badge badge-down bad">
+              <i class="bi bi-arrow-down-short"></i> {{ servedCompare | abs | near}}%
+            </span>
+          {% endif %}
+          <p> vs. last shift </p>
+        </div>
+        <div>
+          <i class="bi bi-clock"></i>
+          <h2> Avg time </h2>
+          <p> {{ avg | near }} min</p>
+          {% if avgCompare >= 0 %}
+            <span class="stat-badge badge-up bad">
+              <i class="bi bi-arrow-up-short"></i> {{ avgCompare | near}}%
+            </span>
+          {% else %}
+            <span class="stat-badge badge-down good">
+              <i class="bi bi-arrow-down-short"></i> {{ avgCompare | abs | near}}%
+            </span>
+          {% endif %}
+          <p> vs. last shift </p>
+        </div>
+        <div>
+          <i class="bi bi-star"></i>
+          <h2> Rating </h2>
+          <p> {{ rate | near}} </p><span> ({{ reviews }} reviews) </span>
+        </div>
+      </div>
+      <div>
+        {% if serving %}
+          <div> <i class="bi bi-person-fill"></i> </div>
+          <div>
+            <h2> Now serving </h2>
+            <img src="https://ui-avatars.com/api/?name={{ serving[0]['user_name'] }}&background=0D6EFD&color=fff" alt="Avatar" class="rounded-circle" width="64">
+          </div>
+          <div>
+            <h2> {{ serving[0]['user_name'] }} </h2>
+            {% if serving[0]['user_id'] is none %}
+              <span> Guest </span>
+            {% else %}
+              <span> Registered </span>
+            {% endif %}
+            <p> Started {{ started | int}} min ago . Joined Queue at {{ joined }} </p>
+          </div>
+          <div>
+            <h3> Serving in progress </h3>
+            {% if serving_est > 0 %}
+              <span> Est. {{ serving_est | near }} min </span>
+            {% else %}
+              <span class="text-muted"> Calculating... </span>
+            {% endif %}
+          </div>
+          <div>
+            <a href="/provider/Queue/endservice"> End service </a>
+            <a href="/provider/Queue/waiting"> doesn't come </a>
+          </div>
+        {% else %}
+          <svg width="100" height="100" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <!-- الخلفية الرمادي (Blob) -->
+            <path d="M22,35 C15,55 25,75 45,85 C65,95 85,75 90,55 C95,35 75,15 55,20 C35,25 29,15 22,35 Z" fill="#E2E8F0"/>
+            
+            <!-- النقط الديكورية الصغيرة -->
+            <circle cx="15" cy="60" r="1.5" fill="#94A3B8"/>
+            <circle cx="85" cy="35" r="2" fill="#94A3B8"/>
+            <circle cx="75" cy="85" r="1.5" fill="#94A3B8"/>
+            
+            <!-- التذكرة المائلة -->
+            <g transform="translate(50, 50) rotate(-12) translate(-50, -50)">
+              <!-- ظل خفيف للتذكرة -->
+              <rect x="28" y="18" width="44" height="60" rx="3" fill="#000000" opacity="0.05" transform="translate(2, 2)"/>
+              
+              <!-- جسم التذكرة -->
+              <rect x="28" y="18" width="44" height="60" rx="3" fill="#FDF6E3" stroke="#E2D8C3" stroke-width="1.5"/>
+              
+              <!-- أيقونة الرأس -->
+              <circle cx="50" cy="38" r="8" fill="#64748B"/>
+              
+              <!-- أيقونة الجسم (الأكتاف) -->
+              <path d="M36,58 C36,50 42,47 50,47 C58,47 64,50 64,58" fill="#64748B"/>
+              
+              <!-- السطرين اللي تحت -->
+              <rect x="38" y="64" width="24" height="2.5" rx="1" fill="#CBD5E1"/>
+              <rect x="38" y="70" width="14" height="2.5" rx="1" fill="#CBD5E1"/>
+            </g>
+          </svg>
+
+          <div>
+            <h3> No Customer Current Being Served </h3>
+            <p> Ready to the next customer </p>
+          </div>
+        {% endif %}
+      </div>
+      <div>
+        <i class="bi bi-People-fill"></i>
+        <h2> Waiting </h2> <span> ({{ numWaiting }}) </span>
+        <div>
+          <table>
+            <thead>
+              <tr>
+                <th> # </th>
+                <th> Name </th>
+                <th> Joined </th>
+                <th> Type </th>
+                <th> Est. wait </th>
+              </tr>
+            </thead>
+            <tbody class="customer-container">
+              {% for customer in waiting %}
+              <tr>
+                <td class="customer-counter"></td>
+                <td>
+                  <img src="https://ui-avatars.com/api/?name={{ customer['name'] }}&background=0D6EFD&color=fff" alt="Avatar" class="rounded-circle" width="64">
+                  <p> {{ customer['name'] }} </p>
+                </td>
+                <td> {{ customer['ago'] | near }} min ago ({{ customer['time'] }}) </td>
+                <td> {{ customer['type'] }} </td>
+                {% if customer['est'] > 0 %}
+                  <td> ~ {{ customer['est'] | near }} min</td>
+                {% else %}
+                  <td class="text-muted"> Soon </td>
+                {% endif %}
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          <div>
+            <a href="/provider/Queue/callNext">
+              <i class="bi bi-People-fill"></i>
+              <span> Call Next </span>
+              <i class="bi bi-arrow-right"></i>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+{% endblock %}

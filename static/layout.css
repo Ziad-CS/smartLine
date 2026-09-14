@@ -231,6 +231,46 @@ color: #ff4d4f;
 .active {
   padding-left: 5px;
 }
+/*! provider Queue */
+  /* * (%) structare  */
+.stat-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 15px; 
+}
+
+.stat-badge i {
+  font-size: 18px; /* لتكبير السهم قليلاً ليتناسب مع الصورة */
+  margin-right: 2px;
+}
+
+.good {
+  color: #28a745; 
+  background-color: rgba(40, 167, 69, 0.3); 
+}
+
+.bad {
+  color: #dc3545; 
+  background-color: rgba(220, 53, 69, 0.3); 
+}
+  /* * waiting counter */
+.customer-container {
+  counter-reset: customer;
+}
+.customer-counter {
+  counter-increment: customer;
+  font-size: 18px;
+}
+.customer-counter::before {
+  content: counter(customer);
+  font-weight: bold;
+  color: #333;
+}
+/*!  */
+
 @media (max-width : 991px) {
   .non-collapse {
     display: flex;

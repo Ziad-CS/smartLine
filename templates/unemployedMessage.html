@@ -1,0 +1,26 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    No company Yet
+{% endblock %}
+
+{% block main %}
+  <div>
+    <div>
+      <i class="bi bi-building-fill"></i>
+      <h1> No Company Yet </h1>
+      <p> You're registered as a Provider, but you're not connected to a company yet.</p>
+      <p> Once a manager adds you to their company, your queue will appear here. </p>
+    </div>
+    <div>
+      <h2> Your Provider Code </h2>
+      <span> {{ invite }} </span>
+    </div>
+    <div>
+      <p> Give this code to your company manager.  </p>
+      <hr>
+      <p> Looking for a company? </p>
+      <p> Ask the manager to connect you using your code. </p>
+    </div>
+  </div>
+{% endblock %}

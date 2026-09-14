@@ -3,6 +3,7 @@ from flask import Flask ,redirect, render_template, session, flash
 from functools import wraps
 from cs50 import SQL
 import random
+from datetime import datetime
 
 import smtplib
 from email.message import EmailMessage
@@ -18,7 +19,7 @@ def login_required(f):
   def decorated_function(*args, **kwargs):
     if session.get("login_state") == 2 :
       if session.get("serv_count", 0) > 3 :
-        return redirect("/guest_pan")
+        return redirect("/guest_ban")
     if session.get("login_state") == 2 :
       return f(*args, **kwargs)
     elif ( "user_id" not in session or session.get("login_state", -1) == 1) :
@@ -32,11 +33,11 @@ def login_required(f):
 
   return decorated_function
 
-def guest_pan(f):
+def guest_ban(f):
   @wraps(f)
   def decorated_function(*args, **kwargs):
     if session.get("login_state") == 2 :
-      return redirect("/guest_pan")
+      return redirect("/guest_ban")
     
     return f(*args, **kwargs)
 
@@ -82,3 +83,39 @@ def send_otp(id) :
     server.starttls()
     server.login("smartline.authentication@gmail.com", os.environ.get("GMAIL_PASSWORD"))
     server.send_message(msg)
+
+def calculate_change(new_value, base_value):
+  if base_value <= 0 :
+    calc = 0
+  else :
+    calc = ((new_value / base_value) * 100) - 100
+  return calc
+
+def limitFloat( floatNum ):
+  return f"{floatNum: ,.1f}"
+
+def estimation(prov_est, customer_est = None) :
+  total_prov_time = 0
+  if prov_est :
+    for est in prov_est :
+      start_time = datetime.strptime(est["start_time"], "%Y-%m-%d %H:%M:%S")
+      end_time = datetime.strptime(est["end_time"], "%Y-%m-%d %H:%M:%S")
+      total_prov_time += (end_time - start_time).total_seconds() / 60
+    avg_prov_time = total_prov_time / len(prov_est)
+  
+    if customer_est :
+      total_customer_time = 0
+      
+      for est in customer_est :
+        start_time = datetime.strptime(est["start_time"], "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(est["end_time"], "%Y-%m-%d %H:%M:%S")
+        total_customer_time += (end_time - start_time).total_seconds() / 60
+      avg_customer_time = total_customer_time / len(customer_est)
+
+      total_est_time = avg_prov_time * 0.7 + avg_customer_time * 0.3
+    else :
+      total_est_time = avg_prov_time
+  else :
+    total_est_time = 0
+  return total_est_time
+

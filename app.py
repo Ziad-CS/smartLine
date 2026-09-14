@@ -4,7 +4,7 @@ from flask import Flask, flash, redirect, render_template, request, session
 from flask_session import Session
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from functions import apology, login_required, guest_pan, send_otp
+from functions import apology, login_required, guest_ban, send_otp, calculate_change, limitFloat, estimation
 from datetime import datetime, timedelta
 import random
 import string
@@ -21,6 +21,7 @@ Session(app)
 
 # Configure CS50 Library to use SQLite database
 db = SQL("sqlite:///smartline.db")
+app.jinja_env.filters["near"] = limitFloat
 
 
 @app.after_request
@@ -31,6 +32,8 @@ def after_request(response):
   response.headers["Pragma"] = "no-cache"
   return response
 
+
+# * For data needed in every loaded page
 
 @app.context_processor
 def inject_roles():
@@ -55,8 +58,11 @@ def index():
   return apology("home")
 
 
+# * For all roles
+    # * For register and validation of G-mail 
+
 @app.route("/register", methods=["GET", "POST"])
-@guest_pan
+@guest_ban
 def register():
   """Register user"""
   if request.method == "POST":
@@ -149,6 +155,8 @@ def verification():
     # , code=check[0]["verification_code"]
 
 
+    # * For Guest access and Ban Page
+
 @app.route("/guest", methods=["GET", "POST"])
 def access():
   if request.method == "POST" :
@@ -165,10 +173,12 @@ def access():
     return render_template("guest.html")
 
 
-@app.route("/guest_pan", methods=["GET"])
-def pan():
-  return render_template("guestPan.html")
+@app.route("/guest_ban", methods=["GET"])
+def ban():
+  return render_template("guestBan.html")
 
+
+    # * For Log In and validate the G-mail if doesn't validated and Log Out
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
@@ -220,9 +230,153 @@ def login():
     return render_template("login.html", email="")
 
 
+@app.route("/logout")
+def logout():
+  """Log user out"""
+
+  # Forget any user_id
+  session.clear()
+
+  # Redirect user to login form
+  return redirect("/")
+
+
+# * For Provider Role
+
+@app.route("/provider/Queue", methods=["GET"])
+@login_required
+@guest_ban
+def providerQueues() :
+  # * check if provider and if it's unemployed and load unemployed page
+  if session.get("role") != "prov" :
+    flash("Your are not provider", category="no")
+    return redirect("/")
+  prov = db.execute("SELECT * FROM providers WHERE user_id = ?", session["user_id"])
+  if not prov :
+    flash("Unauthorized access", category="no")
+    return redirect("/")
+  if not prov[0]["manager_id"] :
+    return render_template("unemployedMessage.html", invite=prov[0]["invite_code"])
+  manager = db.execute("SELECT * FROM managers WHERE id = ?", prov[0]["manager_id"])
+  # * load Queue page and collect and calculate the data needed
+  # queues = db.execute("SELECT * FROM queues WHERE provider_id = ?", prov[0]["id"])
+  # lastqueue = db.execute("SELECT * FROM service_logs WHERE queue_id = (SELECT id FROM queues WHERE provider_id = ? AND status = 'closed' ORDER BY created_at DESC LIMIT 1) ORDER BY start_time DESC", prov[0]["id"])
+  lastqueue = db.execute("SELECT * FROM queues WHERE provider_id = ? AND status = 'closed' ORDER BY created_at DESC LIMIT 1", prov[0]["id"])
+  lastAvgMinutes = 0
+  if not lastqueue :
+    lastlog = []
+
+    # * For every thing in the past about Provider
+
+  else :
+    lastlog = db.execute("SELECT * FROM service_logs WHERE queue_id = ? AND end_time IS NOT NULL", lastqueue[0]["id"])
+    lastTotal_customers = len(lastlog)
+    total_seconds = 0
+    for log in lastlog :
+      pastAvg = datetime.strptime(log["end_time"], "%Y-%m-%d %H:%M:%S") - datetime.strptime(log["start_time"], "%Y-%m-%d %H:%M:%S")
+      total_seconds += pastAvg.total_seconds()
+    lastAvgMinutes = total_seconds / 60 / lastTotal_customers
+  logs = db.execute("SELECT service_logs.id, stars FROM service_logs JOIN queues ON service_logs.queue_id = queues.id WHERE provider_id = ? AND stars IS NOT NULL", prov[0]["id"])
+  reviews = len(logs)
+  rate = 0
+  for log in logs :
+    rate += int(log["stars"])
+  if reviews != 0 :
+    rate /= reviews
+
+    # * For every thing in the present about Provider
+
+  nowQueue = db.execute("SELECT * FROM queues WHERE provider_id = ? AND status = 'active'", prov[0]["id"])
+  nowAvgMinutes = 0
+  if not nowQueue :
+    return render_template("startQueue.html")
+  nowlog = db.execute("SELECT * FROM service_logs WHERE queue_id = ? AND end_time IS NOT NULL", nowQueue[0]["id"])
+  nowTotal_customers = len(nowlog)
+  total_seconds = 0
+  for log in nowlog :
+    if log["end_time"] is not None :
+      nowAvg = datetime.strptime(log["end_time"], "%Y-%m-%d %H:%M:%S") - datetime.strptime(log["start_time"], "%Y-%m-%d %H:%M:%S")
+      total_seconds += nowAvg.total_seconds()
+  if nowTotal_customers != 0 :
+    nowAvgMinutes = total_seconds / 60 / nowTotal_customers
+
+    # * Now serving
+
+  serving = db.execute("SELECT * FROM queue_entries WHERE status = 'serving' AND queue_id = ?", nowQueue[0]["id"])
+  if serving:
+    serviceData = db.execute("SELECT * FROM service_logs WHERE queue_entry_id = ? AND end_time IS NULL", serving[0]["id"])
+    if serviceData :
+      started = ( datetime.now() - datetime.strptime(serviceData[0]["start_time"], "%Y-%m-%d %H:%M:%S") ).total_seconds() / 60
+    else :
+      # inseart data
+      if serving[0]["user_id"] :
+        db.execute("INSERT INTO service_logs (queue_id, user_id, queue_entry_id, user_name, company_name, start_time) VALUES (?, ?, ?, ?, ?, ?)",
+                    nowQueue[0]["id"], serving[0]["user_id"], serving[0]["id"], serving[0]["user_name"],manager[0]["company_name"] , datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+      else :
+        db.execute("INSERT INTO service_logs (queue_id, queue_entry_id, user_name, company_name, start_time) VALUES (?, ?, ?, ?, ?)",
+                    nowQueue[0]["id"], serving[0]["id"], serving[0]["user_name"],manager[0]["company_name"] ,datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+      started = 0
+
+    dt_object = datetime.strptime(serving[0]["joined_at"], "%Y-%m-%d %H:%M:%S")
+    joined = dt_object.strftime("%-I:%M %p")
+  else :
+    started = 0
+    joined = datetime.now().strftime("%-I:%M %p")
+
+    # * In waiting and serving estimated time
+  prov_est = db.execute("SELECT * FROM service_logs WHERE end_time IS NOT NULL AND queue_id IN (SELECT id FROM queues WHERE provider_id = ?) ORDER BY start_time DESC LIMIT 100", prov[0]["id"])
+  customer_est = []
+  if serving :
+    if serving[0]["user_id"] :
+        customer_est = db.execute("SELECT * FROM service_logs WHERE end_time IS NOT NULL AND user_id = ? ORDER BY start_time DESC LIMIT 5", serving[0]["user_id"])
+      
+  serving_est = estimation(prov_est, customer_est)
+
+  nowWaiting = db.execute("SELECT * FROM queue_entries WHERE status = 'waiting' AND queue_id = ?", nowQueue[0]["id"])
+  waiting = []
+  total_est_time = (serving_est - started) if serving_est - started > 0 else 0
+  for customer in nowWaiting :
+    name = customer["user_name"]
+    user_type = "Registered" if customer["user_id"] else "Guest"
+    dt_object = datetime.strptime(customer["joined_at"], "%Y-%m-%d %H:%M:%S")
+    joined_ago = (datetime.now() - dt_object).total_seconds() / 60
+    joined_time = dt_object.strftime("%-I:%M %p")
+
+      # * to get the estimated time by get the average of services in the past for provider and customer
+    if user_type == "Registered" :
+      customer_est = db.execute("SELECT * FROM service_logs WHERE end_time IS NOT NULL AND user_id = ? ORDER BY start_time DESC LIMIT 5", customer["user_id"])
+    else :
+      customer_est = []
+    # * to calc the waiting time and save the estimation time of customer above
+    waiting.append({
+      "name" : name,
+      "type" : user_type,
+      "ago" : joined_ago,
+      "time" : joined_time,
+      "est" : total_est_time
+    })
+    total_est_time += estimation(prov_est, customer_est)
+
+  return render_template("providerQueue.html",
+                          servedToDay=len(nowlog),
+                          servedCompare=calculate_change(len(nowlog), len(lastlog)),
+                          avg=nowAvgMinutes, avgCompare=calculate_change(nowAvgMinutes, lastAvgMinutes),
+                          rate=rate,
+                          reviews=reviews,
+                          serving=serving,
+                          started=started,
+                          joined=joined,
+                          numWaiting=len(nowWaiting),
+                          waiting=waiting,
+                          serving_est=serving_est
+                          )
+
+
+# * For Manager Role
+
 @app.route("/manager/providers", methods=["GET", "POST"])
 @login_required
-@guest_pan
+@guest_ban
 def managerProviders() :
   if session.get("role") != "manager" :
     flash("Your are not manager", category="no")
@@ -230,7 +384,7 @@ def managerProviders() :
 
   manager = db.execute("SELECT * FROM managers WHERE user_id = ?", session["user_id"])
   if not manager :
-    flash("Your are not manager", category="no")
+    flash("Unauthorized access", category="no")
     return redirect("/")
 
   if request.method == "POST" :
@@ -265,7 +419,7 @@ def managerProviders() :
 
 @app.route("/manager/providers/revoke/<prov_id>", methods=["GET"])
 @login_required
-@guest_pan
+@guest_ban
 def revoke(prov_id) :
 
   manager = db.execute("SELECT * FROM managers WHERE user_id = ?", session["user_id"])
@@ -288,9 +442,13 @@ def revoke(prov_id) :
   return redirect("/manager/providers")
 
 
+# * For all Roles after Sign In
+    # * Switching roles between accessed roles.
+    # * All Roles is (Customer, Provider, Manager) and Guest access
+
 @app.route("/switch-role/<role>")
 @login_required
-@guest_pan
+@guest_ban
 def switch_role(role):
   if role == "provider":
       check = db.execute("SELECT * FROM providers WHERE user_id = ?", session["user_id"])
@@ -313,9 +471,11 @@ def switch_role(role):
       return redirect("/find")
 
 
+    # * For load Profile page
+
 @app.route ("/profile")
 @login_required
-@guest_pan
+@guest_ban
 def profile() :
     user = db.execute("SELECT * FROM users WHERE id = ?", session["user_id"])
     comp = ""
@@ -334,9 +494,11 @@ def profile() :
     return render_template("profile.html", mail=user[0]["email"],comp=comp, totalProv=totalProv,code=code)
 
 
+    # * For change your information or company info (Manager) or get your Invite Code (provider)
+
 @app.route ("/profile/update-info/", methods=["POST"])
 @login_required
-@guest_pan
+@guest_ban
 def updateInfoProfile() :
   user = db.execute("SELECT * FROM users WHERE id = ?", session["user_id"])[0]
   name = request.form.get("name")
@@ -377,9 +539,11 @@ def updateInfoProfile() :
   return redirect("/profile")
 
 
+# * Change Password
+
 @app.route ("/profile/change-password/", methods=["POST"])
 @login_required
-@guest_pan
+@guest_ban
 def changePassword() :
   current = request.form.get("currentPassword")
   new = request.form.get("newPassword")
@@ -403,9 +567,11 @@ def changePassword() :
   return redirect("/profile")
 
 
+# * Change invite code for (providers)
+
 @app.route ("/profile/change-code/", methods=["GET"])
 @login_required
-@guest_pan
+@guest_ban
 def changeCode() :
   while(True) :
     code = ''.join(random.choices(string.ascii_letters + string.digits, k=8))
@@ -414,14 +580,3 @@ def changeCode() :
       break
   db.execute("UPDATE providers SET invite_code = ? WHERE user_id = ?", code, session["user_id"])
   return redirect("/profile")
-
-
-@app.route("/logout")
-def logout():
-  """Log user out"""
-
-  # Forget any user_id
-  session.clear()
-
-  # Redirect user to login form
-  return redirect("/")

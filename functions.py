@@ -43,6 +43,21 @@ def guest_ban(f):
 
   return decorated_function
 
+def clear_user_session():
+    # * Clear all application-specific session keys without wiping flash messages
+    keys_to_clear = [
+        "user_id",
+        "login_state",
+        "name",
+        "role",
+        "country",
+        "city",
+        "serv_count",
+        "otp_expiry"
+    ]
+    for key in keys_to_clear:
+        session.pop(key, None)
+        
 def apology(message, code=400):
   """Render message as an apology to user."""
 

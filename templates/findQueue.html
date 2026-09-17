@@ -1,0 +1,108 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Find Queue
+{% endblock %}
+
+{% block main %}
+    <div>
+      <h1> Find Queue</h1>
+      <p> Search for a service and join the nearest queue. Get your position and estimated wait time in real time. </p>
+    </div>
+    <a href="https://storyset.com/people"></a>
+    <form action="" id="search">
+      <div class="input-container">
+        <input type="text" name="q" placeholder="Search by company, description, or service..." id="searchArea"> 
+        <span id="clearBtn" class="clear-icon">&times;</span>
+       </div>
+       <button type="submit"> Search </button>
+    </form>
+    <div>
+      <button type="button" class="category_btn active" data-cat="all"> All </button>
+      <button type="button" class="category_btn" data-cat="clinics"> Clinics & Healthcare </button>
+      <button type="button" class="category_btn" data-cat="banks"> Banks & Finance </button>
+      <button type="button" class="category_btn" data-cat="government_offices"> Government Offices </button>
+      <button type="button" class="category_btn" data-cat="telecom"> Telecom & Customer Service </button>
+      <button type="button" class="category_btn" data-cat="edu"> Education </button>
+      <button type="button" class="category_btn" data-cat="other"> Other </button>
+    </div>
+    <div>
+      <div>
+        <h2> Services Near You </h2>
+        <button type="button" class="btn btn-light btn-sm border-0 d-flex align-items-center gap-1 text-secondary fw-semibold" data-bs-toggle="modal" data-bs-target="#locationModal" id="openModel">
+          <span>📍</span>
+          <span id="currentLocationLabel" class="cap">{{ session.get("city", "Cairo") }}, {{ session.get("country", "Egypt") }}</span>
+          <i class="bi bi-caret-down-fill"></i>
+        </button>
+        <div class="modal fade" id="locationModal" tabindex="-1" aria-labelledby="locationModalLabel" aria-hidden="true">
+          <div class="modal-dialog modal-dialog-centered modal-sm"> <!-- modal-sm علشان تفضل صغيرة وشيك -->
+            <div class="modal-content border-0 shadow-lg rounded-4">
+              
+              <div class="modal-header border-0 pb-0">
+                <h6 class="modal-title fw-bold" id="locationModalLabel">Select Your Location</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+              </div>
+
+              <div class="modal-body">
+                <div class="mb-3">
+                  <label for="countryList" class="form-label small fw-semibold text-secondary mb-1">Country</label>
+                  <select id="countryList" name="country" placeholder="Search country..." class="form-select form-select-lg custom-input">
+                    {% for country in countries %}
+                      <option value="{{ country['name'] |lower }}" {% if session.get('country') |lower == country['name'] |lower %} selected {% endif %}>
+                        {{ country["name"] }} 
+                      </option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <div class="mb-3">
+                  <label for="citiesList" class="form-label small fw-semibold text-secondary mb-1">City</label>
+                  <select id="citiesList" name="city" placeholder="Search city..." class="form-select form-select-lg custom-input">
+                    {% for city in cities %}
+                      <option value="{{ city|lower }}" {% if session.get('city')|lower == city|lower %}selected{% endif %}>
+                        {{ city }}
+                      </option>
+                    {% endfor %}
+                  </select>
+                </div>
+              </div>
+
+              <div class="modal-footer border-0 pt-0">
+                <button type="button" id="applyLocationBtn" class="btn btn-primary w-100 rounded-pill py-2 fw-semibold">
+                  Apply Location
+                </button>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div>
+      {{session["country"]}} , {{session["city"]}}
+      {% for company in companies %}
+        <div class="full-width">
+          <h3> {{company["comp_name"]}}</h3>
+          <h4> {{company["category"]}}</h4>
+          <h5> {{company["opening_time"]}}</h5>
+          <h6> {{company["closing_time"]}}</h6>
+          <p> {{company["address"]}}</p>
+          <p> {{company["phone"]}}</p>
+          <!-- <p> {{company["description"]}}</p> -->
+        </div>
+      {% endfor %}
+    </div>
+{% endblock %}
+{% block js %}
+<script>
+  var settings = {
+    create: false,
+    sortField: {
+      field: "text",
+      direction: "asc"
+  }};
+
+  new TomSelect('#countryList',settings);
+  new TomSelect('#citiesList',settings);
+
+</script>
+{% endblock%}

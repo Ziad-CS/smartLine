@@ -5,7 +5,7 @@ from flask_session import Session
 import requests
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from functions import apology, login_required, guest_ban, send_otp, calculate_change, limitFloat, estimation, clear_user_session
+from functions import apology, login_required, guest_ban, send_otp, calculate_change, limitFloat, estimation, clear_user_session, getCities
 from datetime import datetime, timedelta
 import random
 import string
@@ -37,7 +37,6 @@ def after_request(response):
 
 
 # * For data needed in every loaded page
-
 @app.context_processor
 def inject_roles():
   if "user_id" not in session :
@@ -46,16 +45,17 @@ def inject_roles():
   user = db.execute("SELECT * FROM users WHERE id = ?", id)
   my_roles = []
   comp = ""
-  if len(db.execute("SELECT * FROM managers WHERE user_id = ?", id)) == 1 :
+  manager = db.execute("SELECT * FROM managers WHERE user_id = ?", id)
+  if len(manager) == 1 :
     my_roles.append("manager")
     if session["role"] == "manager" :
-      comp = db.execute("SELECT * FROM managers WHERE user_id = ?", id)
+      comp = db.execute("SELECT * FROM companies WHERE manager_id = ?", manager[0]["id"])
   if len(db.execute("SELECT * FROM providers WHERE user_id = ?", id)) == 1 :
     my_roles.append("prov")
     if session["role"] == "prov" :
-      comp = db.execute("SELECT * FROM providers JOIN managers ON providers.manager_id = managers.id WHERE providers.user_id = ?", id)
+      comp = db.execute("SELECT companies.* FROM providers JOIN managers ON providers.manager_id = managers.id JOIN companies ON companies.manager_id = managers.id WHERE providers.user_id = ?", id)
   if comp :
-    return dict(my_roles=my_roles, comp=comp[0]["company_name"])
+    return dict(my_roles=my_roles, comp=comp[0]["name"])
   return dict(my_roles=my_roles, comp= "" )
 @app.route("/")
 @login_required
@@ -138,7 +138,7 @@ def verification():
     if not code or not code.isdigit():
       flash("enter code pls", category="no")
       return redirect("/verification")
-    code_expired = ( datetime.now() - datetime.strptime(session.get("otp_expiry", "2007-09-23 18:30:00"), "%Y-%m-%d %H:%M:%S")) > timedelta(minutes=5);
+    code_expired = ( datetime.now() - datetime.strptime(session.get("otp_expiry", "2007-09-23 18:30:00"), "%Y-%m-%d %H:%M:%S")) > timedelta(minutes=10);
     if int(code) == int(user["verification_code"]) and not code_expired:
       db.execute("UPDATE users SET is_verified = 1 WHERE id = ?", session["user_id"])
       session["login_state"] = 0
@@ -150,7 +150,7 @@ def verification():
   
   else :
     check = db.execute("SELECT * FROM users WHERE id = ?", session["user_id"])
-    if ( datetime.now() - datetime.strptime(session.get("otp_expiry", "2007-09-23 18:30:00"), "%Y-%m-%d %H:%M:%S")) > timedelta(minutes=5) :
+    if ( datetime.now() - datetime.strptime(session.get("otp_expiry", "2007-09-23 18:30:00"), "%Y-%m-%d %H:%M:%S")) > timedelta(minutes=10) :
       code = str(random.randint(100000, 999999))
       db.execute("UPDATE users SET verification_code = ? WHERE id = ?", code,session["user_id"])
       send_otp(check[0]["id"])
@@ -274,6 +274,8 @@ def findQueue() :
   # ! Companies For View
   select_part = """
   SELECT DISTINCT
+    managers.id AS manager_id,
+    companies.id AS comp_id,
     companies.name AS comp_name,
     companies.category,
     companies.opening_time,
@@ -309,6 +311,7 @@ def findQueue() :
     LOWER(companies.country) = ? AND
     LOWER(companies.city) = ?
   """
+  print("FIxxxXXXxxxXXXX " + country)
   params.append(country)
   params.append(city)
     
@@ -321,7 +324,7 @@ def findQueue() :
   else :
     sql += " ORDER BY companies.created_at DESC"
 
-
+  print(f"DEBUG: country param = {country!r} , {city!r}")
   companies = db.execute(sql, *params)
 
   for company in companies :
@@ -343,6 +346,59 @@ def findQueue() :
     countries = json.load(file)
   with open("static/EGcities.json", "r", encoding="utf-8") as file:
     cities = json.load(file)
+
+  for company in companies :
+    queues = db.execute("SELECT queues.* FROM queues JOIN providers ON providers.id = queues.provider_id JOIN managers ON managers.id = providers.manager_id WHERE queues.status = 'active' AND managers.id = ?", company["manager_id"])
+    logs = db.execute("SELECT service_logs.* FROM service_logs JOIN queues ON queues.id = service_logs.queue_id JOIN providers ON providers.id = queues.provider_id WHERE providers.manager_id = ? AND stars IS NOT NULL", company["manager_id"])
+    open_counters = len(queues)
+    if logs :
+      reviews = len(logs)
+      rate = 0
+      for log in logs :
+        rate += int(log["stars"])
+      rate /= reviews
+    else :
+      reviews = 0
+      rate = 0
+
+    lowest_time = float('inf')
+    lowest_time_id = -1
+    for queue in queues :
+      total_est_time = 0
+      prov_log = db.execute("SELECT service_logs.* FROM service_logs WHERE end_time IS NOT NULL AND queue_id IN (SELECT id FROM queues WHERE provider_id = ?) ORDER BY start_time DESC LIMIT 100", queue["provider_id"])
+      avg_prov_time = 0
+      if prov_log :
+        total_prov_time = 0
+        for est in prov_log :
+          start_time = datetime.strptime(est["start_time"], "%Y-%m-%d %H:%M:%S")
+          end_time = datetime.strptime(est["end_time"], "%Y-%m-%d %H:%M:%S")
+          total_prov_time += (end_time - start_time).total_seconds() / 60
+        avg_prov_time = total_prov_time / len(prov_log)
+      if avg_prov_time :
+        line = db.execute("SELECT * FROM queue_entries WHERE queue_id = ?", queue["id"])
+        for user in line :
+          user_log = db.execute("SELECT * FROM service_logs WHERE end_time IS NOT NULL AND user_id = ? ORDER BY start_time DESC LIMIT 5", user["user_id"])
+          avg_customer_time = 0
+          if user_log :
+            total_customer_time = 0
+            for est in user_log :
+              start_time = datetime.strptime(est["start_time"], "%Y-%m-%d %H:%M:%S")
+              end_time = datetime.strptime(est["end_time"], "%Y-%m-%d %H:%M:%S")
+              total_customer_time += (end_time - start_time).total_seconds() / 60
+            avg_customer_time = total_customer_time / len(user_log)
+            total_est_time += avg_prov_time * 0.7 + avg_customer_time * 0.3
+          else :
+            total_est_time += avg_prov_time
+      if total_est_time < lowest_time and total_est_time > 0:
+        lowest_time = total_est_time
+        lowest_time_id = queue["id"]
+    if lowest_time == float('inf'):
+      lowest_time = 0
+    company["open_counters"] = open_counters
+    company["lowest_time"] = lowest_time
+    company["rate"] = rate
+    company["reviews"] = reviews
+
   return render_template("findQueue.html", companies=companies, countries=countries, cities=cities)
 
 
@@ -356,10 +412,10 @@ def myQueueCustomer() :
 @app.route("/provider/Queue", methods=["GET"])
 @login_required
 @guest_ban
-def providerQueues() :
+def providerQueue() :
   # * check if provider and if it's unemployed and load unemployed page
   if session.get("role") != "prov" :
-    flash("Your are not provider", category="no")
+    flash("Unauthorized access", category="no")
     return redirect("/")
   prov = db.execute("SELECT * FROM providers WHERE user_id = ?", session["user_id"])
   if not prov :
@@ -368,6 +424,7 @@ def providerQueues() :
   if not prov[0]["manager_id"] :
     return render_template("unemployedMessage.html", invite=prov[0]["invite_code"])
   manager = db.execute("SELECT * FROM managers WHERE id = ?", prov[0]["manager_id"])
+  comp = db.execute("SELECT * FROM companies WHERE manager_id = ?", manager[0]["id"])
   # * load Queue page and collect and calculate the data needed
   # queues = db.execute("SELECT * FROM queues WHERE provider_id = ?", prov[0]["id"])
   # lastqueue = db.execute("SELECT * FROM service_logs WHERE queue_id = (SELECT id FROM queues WHERE provider_id = ? AND status = 'closed' ORDER BY created_at DESC LIMIT 1) ORDER BY start_time DESC", prov[0]["id"])
@@ -422,10 +479,10 @@ def providerQueues() :
       # inseart data
       if serving[0]["user_id"] :
         db.execute("INSERT INTO service_logs (queue_id, user_id, queue_entry_id, user_name, company_name, start_time) VALUES (?, ?, ?, ?, ?, ?)",
-                    nowQueue[0]["id"], serving[0]["user_id"], serving[0]["id"], serving[0]["user_name"],manager[0]["company_name"] , datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+                    nowQueue[0]["id"], serving[0]["user_id"], serving[0]["id"], serving[0]["user_name"],comp[0]["name"] , datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
       else :
         db.execute("INSERT INTO service_logs (queue_id, queue_entry_id, user_name, company_name, start_time) VALUES (?, ?, ?, ?, ?)",
-                    nowQueue[0]["id"], serving[0]["id"], serving[0]["user_name"],manager[0]["company_name"] ,datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+                    nowQueue[0]["id"], serving[0]["id"], serving[0]["user_name"],comp[0]["name"] ,datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
       started = 0
 
     dt_object = datetime.strptime(serving[0]["joined_at"], "%Y-%m-%d %H:%M:%S")
@@ -488,7 +545,7 @@ def providerQueues() :
 @guest_ban
 def start_queue() :
   if session.get("role") != "prov" :
-    flash("Your are not provider", category="no")
+    flash("Unauthorized access", category="no")
     return redirect("/")
   prov = db.execute("SELECT * FROM providers WHERE user_id = ?", session["user_id"])
   if not prov :
@@ -510,9 +567,13 @@ def start_queue() :
 @guest_ban
 def call_next():
     if session.get("role") != "prov":
+        flash("Unauthorized access", category="no")
         return redirect("/")
         
     prov = db.execute("SELECT * FROM providers WHERE user_id = ?", session["user_id"])
+    if not prov :
+      flash("Unauthorized access", category="no")
+      return redirect("/")
     nowQueue = db.execute("SELECT * FROM queues WHERE provider_id = ? AND (status = 'active' OR (status = 'closed' AND closed_at IS NULL))", prov[0]["id"])
     
     if not nowQueue:
@@ -529,16 +590,17 @@ def call_next():
     if next_customer:
         customer = next_customer[0]
         manager = db.execute("SELECT * FROM managers WHERE id = ?", prov[0]["manager_id"])
+        comp = db.execute("SELECT * FROM companies WHERE manager_id = ?", manager[0]["id"])
         
         db.execute("UPDATE queue_entries SET status = 'serving' WHERE id = ?", customer["id"])
         log = db.execute("SELECT * FROM service_logs WHERE user_id = ? AND end_time IS NULL", customer["user_id"])
         if not log :
           if customer["user_id"]:
               db.execute("INSERT INTO service_logs (queue_id, user_id, queue_entry_id, user_name, company_name, start_time) VALUES (?, ?, ?, ?, ?, ?)",
-                    nowQueue[0]["id"], customer["user_id"], customer["id"], customer["user_name"],manager[0]["company_name"] , datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+                    nowQueue[0]["id"], customer["user_id"], customer["id"], customer["user_name"],comp[0]["name"] , datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
           else:
               db.execute("INSERT INTO service_logs (queue_id, queue_entry_id, user_name, company_name, start_time) VALUES (?, ?, ?, ?, ?)",
-                    nowQueue[0]["id"], customer["id"], customer["user_name"],manager[0]["company_name"] ,datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+                    nowQueue[0]["id"], customer["id"], customer["user_name"],comp[0]["name"] ,datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
     else:
         flash("No customers waiting", category="no")
         
@@ -550,9 +612,14 @@ def call_next():
 @guest_ban
 def skip_service():
     if session.get("role") != "prov":
+        flash("Unauthorized access", category="no")
         return redirect("/")
         
     prov = db.execute("SELECT * FROM providers WHERE user_id = ?", session["user_id"])
+    if not prov:
+        flash("Unauthorized access", category="no")
+        return redirect("/")
+    
     nowQueue = db.execute("SELECT * FROM queues WHERE provider_id = ? AND (status = 'active' OR (status = 'closed' AND closed_at IS NULL))", prov[0]["id"])
     
     if not nowQueue:
@@ -580,7 +647,7 @@ def skip_service():
         db.execute("UPDATE queue_entries SET status = 'done' WHERE id = ?", serving[0]["id"])
         flash("Customer skipped.", category="yes")
         
-        remaining = db.execute("SELECT * FROM queue_entries WHERE queue_id = ? AND status = ('waiting', 'serving')", nowQueue[0]["id"])
+        remaining = db.execute("SELECT * FROM queue_entries WHERE queue_id = ? AND status IN ('waiting', 'serving')", nowQueue[0]["id"])
         if nowQueue[0]["status"] == "closed" and len(remaining) == 0 :
           now_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
           db.execute("UPDATE queues SET closed_at = ? WHERE id = ?", now_time, nowQueue[0]["id"])
@@ -594,9 +661,11 @@ def skip_service():
 @guest_ban
 def end_service():
   if session.get("role") != "prov":
+    flash("Unauthorized access", category="no")
     return redirect("/")
   prov = db.execute("SELECT * FROM providers WHERE user_id = ?", session["user_id"])
   if not prov:
+    flash("Unauthorized access", category="no")
     return redirect("/")
   
   nowQueue = db.execute("SELECT * FROM queues WHERE provider_id = ? AND (status = 'active' OR (status = 'closed' AND closed_at IS NULL))", prov[0]["id"])
@@ -623,10 +692,12 @@ def end_service():
 @guest_ban
 def end_shift():
     if session.get("role") != "prov":
+        flash("Unauthorized access", category="no")
         return redirect("/")
         
     prov = db.execute("SELECT * FROM providers WHERE user_id = ?", session["user_id"])
     if not prov:
+        flash("Unauthorized access", category="no")
         return redirect("/")
         
     nowQueue = db.execute("SELECT * FROM queues WHERE provider_id = ? AND (status = 'active' OR (status = 'closed' AND closed_at IS NULL))", prov[0]["id"])
@@ -719,7 +790,7 @@ def revoke(prov_id) :
   return redirect("/manager/providers")
 
 
-@app.route ("/manager/profile/update-info/", methods=["POST"])
+@app.route ("/manager/profile/update-info/", methods=["GET", "POST"])
 @login_required
 @guest_ban
 def updateInfoManager() :
@@ -731,12 +802,11 @@ def updateInfoManager() :
     flash("Unauthorized access", category="no")
     return redirect("/")
   
-  user = db.execute("SELECT * FROM users WHERE id = ?", session["user_id"])
+  # user = db.execute("SELECT * FROM users WHERE id = ?", session["user_id"])
   with open("static/countries.json", "r", encoding="utf-8") as file:
     countries = json.load(file)
   with open("static/EGcities.json", "r", encoding="utf-8") as file:
     cities = json.load(file)
-  end = render_template("profile.html", mail=user[0]["email"], managerdetails=managerdetails, countries=countries, cities=cities)
   
   manager = db.execute("SELECT * FROM managers WHERE user_id = ?", session["user_id"])
   details = db.execute("SELECT * FROM companies WHERE manager_id = ?", manager[0]["id"])
@@ -757,11 +827,12 @@ def updateInfoManager() :
         }
   else :
     managerdetails = {}
+  # end = render_template("profile.html", mail=user[0]["email"], managerdetails=managerdetails, countries=countries, cities=cities)
 
   name = request.form.get('company_name', "").strip().lower()
-  if not name or len(name) > 100 or len(name) < 2:
+  if not name or len(name) > 100 or len(name) <= 2:
     flash("Company name must be between 2 and 100 characters.", category="no")
-    return end
+    return redirect("/profile")
   
   managerdetails["name"] = name
 
@@ -769,7 +840,7 @@ def updateInfoManager() :
   opts = ["clinics", "banks", "government_offices", "telecom", "edu", "other"]
   if cat not in opts:
     flash("Please select a valid category.", category="no")
-    return end
+    return redirect("/profile")
   
   managerdetails["cat"] = cat
 
@@ -783,66 +854,75 @@ def updateInfoManager() :
       break
   if not found :
     flash("Please select a valid country.", category="no")
-    return end
+    return redirect("/profile")
   
   managerdetails["country"] = country
 
   city = request.form.get('city', "").strip().lower()
-  with open("static/EGcities.json", "r", encoding="utf-8") as file:
-    cities = json.load(file)
-  if city not in  cities:
+
+  cities = getCities(country)
+  cities_response, status = getCities(country)
+  cities = cities_response.get_json()
+  if not any(c.lower() == city for c in cities):
     flash("Please select a valid city.", category="no")
-    return end
+    return redirect("/profile")
   
   managerdetails["city"] = city
 
-  opening_time = request.form.get('opening_time', "").strip()
-  opening = None
-  try:
-    opening = datetime.strptime(opening_time, "%H:%M").time()
-  except ValueError:
-    flash("Please enter a valid opening time format (HH:MM).", category="no")
-    return end
+  if not request.form.get("is_24_hours") :
+    opening_time = request.form.get('opening_time', "").strip()
+    opening = None
+    if opening_time :
+      try:
+        opening = datetime.strptime(opening_time, "%H:%M").time()
+      except ValueError:
+        flash("Please enter a valid opening time format (HH:MM).", category="no")
+        return redirect("/profile")
 
-  closing_time = request.form.get('closing_time', "").strip()
-  closing = None
-  try:
-    closing = datetime.strptime(closing_time, "%H:%M").time()
-  except ValueError:
-    flash("Please enter a valid closing time format (HH:MM).", category="no")
-    return end
-  
-  if not opening or not closing :
-    flash("Please enter opening and closing time", category="no")
-    return end
+    closing_time = request.form.get('closing_time', "").strip()
+    closing = None
+    if closing_time :
+      try:
+        closing = datetime.strptime(closing_time, "%H:%M").time()
+      except ValueError:
+        flash("Please enter a valid closing time format (HH:MM).", category="no")
+        return redirect("/profile")
+    
+    if (opening and not closing) or (not opening and closing) :
+      flash("Please enter opening and closing time", category="no")
+      return redirect("/profile")
+  else :
+    opening_time = "00:00"
+    closing_time = "00:00"
 
   managerdetails["opening"] = opening_time
   managerdetails["closing"] = closing_time
 
   address = request.form.get('address', "").strip()
   if address :
-    if len(address) > 200 or len(address) < 5:
-      flash("address must be between 5 and 200 characters.", category="no")
-      return end
+    if len(address) > 100 or len(address) <= 5:
+      flash("address must be between 5 and 100 characters.", category="no")
+      return redirect("/profile")
   
   managerdetails["address"] = address
 
   phone = request.form.get('phone', "").strip()
-  phone_pattern = r"^[0-9+\-\s()]{5,20}$"
-  if not re.match(phone_pattern, phone):
-      flash("Invalid phone number.", category="no")
-      return end
-  elif not re.search(r"\d", phone) :
-    flash("Phone number must contain digits.", category="no")
-    return end
+  if phone :
+    phone_pattern = r"^[0-9+\-\s()]{5,20}$"
+    if not re.match(phone_pattern, phone):
+        flash("Invalid phone number.", category="no")
+        return redirect("/profile")
+    elif not re.search(r"\d", phone) :
+      flash("Phone number must contain digits.", category="no")
+      return redirect("/profile")
   
   managerdetails["phone"] = phone
 
   description = request.form.get('description', "").strip()
   if description :
-    if len(description) > 150 or len(description) < 10 :
-      flash("description must be between 10 and 150 characters.", category="no")
-      return end
+    if len(description) > 250 or len(description) <= 10 :
+      flash("description must be between 10 and 250 characters.", category="no")
+      return redirect("/profile")
   
   managerdetails["description"] = description
   if inDb :
@@ -856,6 +936,7 @@ def updateInfoManager() :
               managerdetails['opening'], managerdetails['closing'], managerdetails['address'], managerdetails['phone'], managerdetails['description'],
               manager[0]["id"]
           )
+    
   else :
     db.execute("""
               INSERT INTO companies (
@@ -863,9 +944,13 @@ def updateInfoManager() :
                   opening_time, closing_time, address, phone, description
               ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           """, 
-              manager["id"][0], managerdetails['name'], managerdetails['cat'], managerdetails['country'], managerdetails['city'],
+              manager[0]["id"], managerdetails['name'], managerdetails['cat'], managerdetails['country'], managerdetails['city'],
               managerdetails['opening'], managerdetails['closing'], managerdetails['address'], managerdetails['phone'], managerdetails['description']
           )
+  db.execute("UPDATE managers SET company_name = ? WHERE id = ?", managerdetails['name'], manager[0]['id'])
+  session["country"] = managerdetails['country']
+  session["city"] = managerdetails['city']
+  db.execute("UPDATE users SET country = ?, city = ? WHERE id = ?", managerdetails['country'], managerdetails['city'],session["user_id"])
   return redirect("/profile")
 
 
@@ -905,38 +990,45 @@ def switch_role(role):
 @guest_ban
 def profile() :
     user = db.execute("SELECT * FROM users WHERE id = ?", session["user_id"])
+    if user :
+      session["country"] = user[0]["country"]
+      session["city"] = user[0]["city"]
+    if not session.get("country") or not session.get("city") :
+      session["country"] = 'egypt'
+      session["city"] = 'cairo'
     comp = ""
     code = ""
     totalProv = ""
     managerdetails = ""
+    countries = ""
+    cities = ""
 
     if session.get("role") == "prov" :
-      prov = db.execute("SELECT * FROM providers LEFT JOIN managers ON managers.id = providers.manager_id WHERE providers.user_id = ?", session["user_id"])
-      comp = prov[0]["company_name"]
+      prov = db.execute("SELECT providers.*, managers.id AS manager_id FROM providers LEFT JOIN managers ON managers.id = providers.manager_id WHERE providers.user_id = ?", session["user_id"])
+      comp = db.execute("SELECT * FROM companies WHERE manager_id = ?", prov[0]["manager_id"])
+      comp = comp[0]["name"]
       code = prov[0]["invite_code"]
       if not comp :
         comp = ""
     elif session.get("role") == "manager" :
       manager = db.execute("SELECT * FROM managers WHERE user_id = ?", session["user_id"])
       details = db.execute("SELECT * FROM companies WHERE manager_id = ?", manager[0]["id"])
-      with open("static/countries.json", "r", encoding="utf-8") as file:
-        countries = json.load(file)
-      with open("static/EGcities.json", "r", encoding="utf-8") as file:
-        cities = json.load(file)
       if details :
         company = details[0]
         managerdetails = {
-          'name' : company['name'],
-          'cat' : company['category'],
-          'country' : company['country'],
-          'city' : company['city'],
-          'opening' : company['opening_time'],
-          'closing' : company['closing_time'],
-          'address' : company['address'],
-          'phone' : company['phone'],
-          'description' : company['description'],
+          'name': company.get('name', '') or '',
+          'cat': company.get('category', '') or '',
+          'country': company.get('country', '') or '',
+          'city': company.get('city', '') or '',
+          'opening': company.get('opening_time', '') or '',
+          'closing': company.get('closing_time', '') or '',
+          'address': company.get('address', '') or '',
+          'phone': company.get('phone', '') or '',
+          'description': company.get('description', '') or ''
         }
-    return render_template("profile.html", mail=user[0]["email"],comp=comp, totalProv=totalProv, code=code, managerdetails=managerdetails, countries=countries, cities=cities)
+    with open("static/countries.json", "r", encoding="utf-8") as file:
+      countries = json.load(file)
+    return render_template("profile.html", mail=user[0]["email"],comp=comp, totalProv=totalProv, code=code, managerdetails=managerdetails, countries=countries)
 
 
     # * For change your information or company info (Manager) or get your Invite Code (provider)
@@ -962,14 +1054,15 @@ def updateInfoProfile() :
   #       db.execute("UPDATE managers SET company_name = ? WHERE user_id = ?", comp.strip(), session["user_id"])
 
   if email :
-    if email.strip().lower() != user["email"] :
-      if len(email.strip().lower()) > 128 :
+    new_email = email.strip().lower()
+    if new_email != user["email"] :
+      if len(new_email) > 128 :
         flash("the max length is 128")
         return redirect("/profile")
-      check = db.execute("SELECT * FROM users WHERE email = ?", email.strip().lower())
+      check = db.execute("SELECT * FROM users WHERE email = ?", new_email)
       if check :
         if not check[0]["is_verified"] :
-          if ( datetime.now() - datetime.strptime(check[0]["created_at"], "%Y-%m-%d %H:%M:%S") ) > timedelta(minutes=5) :
+          if ( datetime.now() - datetime.strptime(check[0]["created_at"], "%Y-%m-%d %H:%M:%S") ) > timedelta(minutes=10) :
             db.execute("DELETE FROM users WHERE id = ?", check[0]["id"])
           else :
             flash("try again in a few minutes", category="no")
@@ -979,30 +1072,19 @@ def updateInfoProfile() :
           return redirect("/profile")
       
         session["login_state"] = 1
-        db.execute("UPDATE users SET is_verified = 0, email = ? WHERE id = ?", email, session["user_id"])
-        return redirect("/verification")
 
+
+      db.execute("UPDATE users SET is_verified = 0, email = ? WHERE id = ?", email, session["user_id"])
+      return redirect("/verification")
   return redirect("/profile")
 
 
 @app.route("/api/get-cities")
 @login_required
 def get_cities():
-    country = request.args.get("country", "").lower()
-    api_url = f"https://countriesnow.space/api/v0.1/countries/cities"
-    payload = {"country" : country}
-    try :
-      data = requests.post(api_url, json=payload, timeout=5)
-      if data.status_code == 200 :
-        response_data = data.json()
-        cities = response_data.get("data", "")
-        return jsonify(cities), 200
-      else :
-        return jsonify({'error' : 'Failed ro fetch from exrernal API'}), 500
-    except requests.exceptions.Timeout :
-      return jsonify({'error' : "External API timed out"}), 500
-    except Exception as e :
-      return jsonify({'error' : str(e)}), 500
+  country = request.args.get("country", "").lower()
+  return getCities(country)
+    
 
 @app.route("/changeLocation")
 @login_required
@@ -1014,15 +1096,15 @@ def changeLocation() :
   session["country"] = country
   session["city"] = city
   if session.get("login_state", -1) == 0 :
-    db.execute("UPDATE users SET country = ?, city = ? WHERE id = ?", country, city,session["user_id"])
+    db.execute("UPDATE users SET country = ?, city = ? WHERE id = ?", country.strip().lower(), city.strip().lower(),session["user_id"])
 
-  if  location.endswith("?") :
-    add_country_city = f"country={country}&city={city}"
-  elif "?" in location:
-    add_country_city = f"&country={country}&city={city}"
-  else :
-    add_country_city = f"?country={country}&city={city}"
-  return redirect(location + add_country_city)
+    if  location.endswith("?") :
+      add_country_city = f"country={country}&city={city}"
+    elif "?" in location:
+      add_country_city = f"&country={country}&city={city}"
+    else :
+      add_country_city = f"?country={country}&city={city}"
+  return location + add_country_city
 # * Change Password
 
 @app.route ("/profile/change-password/", methods=["POST"])
@@ -1057,19 +1139,48 @@ def changePassword() :
 @login_required
 @guest_ban
 def becomeManager() :
+  check = db.execute("SELECT id FROM managers WHERE user_id = ?", session["user_id"])
+  if check:
+    flash("You are already registered as a manager", category="no")
+    return redirect("/profile")
+  
   comp = request.form.get("company_name", "").strip()
   if not comp or len(comp) < 3 or len(comp) > 50:
     flash("Company name must be between 3 and 50 characters", category="no")
     return redirect("/profile")
 
-  check = db.execute("SELECT id FROM managers WHERE user_id = ?", session["user_id"])
-  if check:
-    flash("You are already registered as a manager", category="no")
+
+  cat = request.form.get("category", "").strip()
+  opts = ["clinics", "banks", "government_offices", "telecom", "edu", "other"]
+  if cat not in opts:
+    flash("Please select a valid category.", category="no")
     return redirect("/profile")
+  
+  country = request.form.get("country", "").strip().lower()
+  found = ""
+  with open("static/countries.json", "r", encoding="utf-8") as file:
+    countries = json.load(file)
+  for dec in countries :
+    if dec["name"].strip().lower() == country :
+      found = country
+      break
+  if not found :
+    flash("Please select a valid country.", category="no")
+    return redirect("/profile")
+  
+  city = request.form.get("city", "").strip()
+  cities_response, status = getCities(country)
+  cities = cities_response.get_json()
+  if not any(c.lower() == city for c in cities):
+    flash("Please select a valid city.", category="no")
+    return redirect("/profile")
+    
 
   db.execute("INSERT INTO managers (user_id, company_name) VALUES (?, ?)", session["user_id"], comp)
+  manager = db.execute("SELECT * FROM managers WHERE user_id = ?", session["user_id"])[0]
+  db.execute("INSERT INTO companies (manager_id, name, category, country, city) VALUES (?, ?, ?, ?, ?)", manager["id"], comp, cat, country, city)
   session["role"] = "manager"
-  flash("Congratulations! You are now a manager.", category="yes")
+  flash("Congratulations! You are now a manager. You can add more details about company from Profile.", category="yes")
   return redirect("/manager/providers")
 
 @app.route ("/profile/upgrade/provider", methods=["POST"])

@@ -46,20 +46,20 @@
               <div class="modal-body">
                 <div class="mb-3">
                   <label for="countryList" class="form-label small fw-semibold text-secondary mb-1">Country</label>
-                  <select id="countryList" name="country" placeholder="Search country..." class="form-select form-select-lg custom-input">
+                  <select id="countryList" name="country" placeholder="Search country..." class="form-select form-select-lg custom-input" data-my-country="{{ session.get('country') }}" >
                     {% for country in countries %}
                       <option value="{{ country['name'] |lower }}" {% if session.get('country') |lower == country['name'] |lower %} selected {% endif %}>
-                        {{ country["name"] }} 
+                        {{ country["name"]}} 
                       </option>
                     {% endfor %}
                   </select>
                 </div>
                 <div class="mb-3">
                   <label for="citiesList" class="form-label small fw-semibold text-secondary mb-1">City</label>
-                  <select id="citiesList" name="city" placeholder="Search city..." class="form-select form-select-lg custom-input">
+                  <select id="citiesList" name="city" placeholder="Search city..." class="form-select form-select-lg custom-input" data-my-city="{{ session.get('city') }}">
                     {% for city in cities %}
                       <option value="{{ city|lower }}" {% if session.get('city')|lower == city|lower %}selected{% endif %}>
-                        {{ city }}
+                        {{ city}}
                       </option>
                     {% endfor %}
                   </select>
@@ -77,17 +77,101 @@
         </div>
       </div>
     </div>
-    <div>
-      {{session["country"]}} , {{session["city"]}}
+    <div class="row g-3">
       {% for company in companies %}
-        <div class="full-width">
-          <h3> {{company["comp_name"]}}</h3>
-          <h4> {{company["category"]}}</h4>
-          <h5> {{company["opening_time"]}}</h5>
-          <h6> {{company["closing_time"]}}</h6>
-          <p> {{company["address"]}}</p>
-          <p> {{company["phone"]}}</p>
-          <!-- <p> {{company["description"]}}</p> -->
+        <div class="col-12 col-md-6 col-xl-4">
+          <a href="/customer/company/{{ company['comp_id'] }}" class="text-decoration-none">
+            <div class="card border-0 shadow-sm rounded-4 p-3 h-100 service-card {% if company['open_counters'] == 0 %}service-card-closed{% endif %}">
+              
+              <!-- Top Row: Icon, Titles & Arrow -->
+              <div class="d-flex align-items-center justify-content-between mb-3">
+                <div class="d-flex align-items-center gap-3">
+                  <div class="service-icon rounded-circle bg-primary bg-opacity-10 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 48px; height: 48px;">
+                    {% if 'clinic' in company['category']|lower or 'health' in company['category']|lower %}
+                      <i class="bi bi-heart-pulse text-primary fs-5"></i>
+                    {% elif 'bank' in company['category']|lower or 'finance' in company['category']|lower %}
+                      <i class="bi bi-bank text-primary fs-5"></i>
+                    {% elif 'government' in company['category']|lower %}
+                      <i class="bi bi-file-earmark-text text-primary fs-5"></i>
+                    {% elif 'telecom' in company['category']|lower %}
+                      <i class="bi bi-broadcast text-primary fs-5"></i>
+                    {% elif 'edu' in company['category']|lower %}
+                      <i class="bi bi-mortarboard text-primary fs-5"></i>
+                    {% else %}
+                      <i class="bi bi-building text-primary fs-5"></i>
+                    {% endif %}
+                  </div>
+                  <div>
+                    <h6 class="fw-bold text-dark mb-0">{{ company["comp_name"] }}</h6>
+                    <small class="text-muted">{{ company["category"] }}</small>
+                  </div>
+                </div>
+                <i class="bi bi-chevron-right text-muted opacity-50"></i>
+              </div>
+
+              <!-- Bottom Metrics -->
+              <div class="d-flex flex-column gap-2">
+                {% if company["open_counters"] > 0 %}
+                  <div class="d-flex align-items-center text-secondary small">
+                    <i class="bi bi-people-fill text-primary me-2"></i>
+                    <span><strong>{{ company["open_counters"] }}</strong> Open Counters</span>
+                  </div>
+                  <div class="d-flex align-items-center text-secondary small">
+                    <i class="bi bi-clock text-warning me-2"></i>
+                    <span>~ {{ company["lowest_time"] }} min wait</span>
+                  </div>
+                  <div class="d-flex align-items-center text-secondary small">
+                    <i class="bi bi-star-fill text-warning me-2"></i>
+                    <span class="fw-semibold text-dark">{{ company["rate"]|near if company["rate"] else "New" }}</span>
+                    {% if company["reviews"] %}
+                      <span class="text-muted ms-1">({{ company["reviews"] }})</span>
+                    {% endif %}
+                  </div>
+                {% else %}
+                  <div class="d-flex align-items-center text-secondary small py-2">
+                    <span class="d-inline-block rounded-circle bg-secondary me-2" style="width: 7px; height: 7px;"></span>
+                    <span>No active queue right now</span>
+                  </div>
+                {% endif %}
+              </div>
+              <div class="pt-2 border-top border-light-subtle d-flex flex-column gap-1 text-muted" style="font-size: 0.78rem;">
+                {% if company["opening_time"] == "00:00" and company["closing_time"] == "00:00" %}
+                  <div class="d-flex align-items-center gap-1">
+                    <i class="bi bi-arrow-repeat text-success me-1"></i>
+                    <span class="fw-semibold text-success">Open 24 Hours</span>
+                  </div>
+                {% elif company["opening_time"] and company["closing_time"] %}
+                  <div class="d-flex align-items-center gap-1">
+                    <i class="bi bi-clock-history text-secondary me-1"></i>
+                    <span>{{ company["opening_time"] }} - {{ company["closing_time"] }}</span>
+                  </div>
+                {% else %}
+                  <div class="d-flex align-items-center gap-1">
+                    <i class="bi bi-question-circle text-muted me-1"></i>
+                    <span class="text-muted"> Working Hours not specified</span>
+                  </div>
+                {% endif %}
+
+                {% if company["phone"] %}
+                  <div class="d-flex align-items-center gap-1">
+                    <i class="bi bi-telephone text-secondary me-1"></i>
+                    <span>{{ company["phone"] }}</span>
+                  </div>
+                {% endif %}
+
+                {% if company["address"] %}
+                  <div class="d-flex align-items-center gap-1 text-truncate" title="{{ company['address'] }}">
+                    <i class="bi bi-geo-alt text-secondary me-1"></i>
+                    <span class="text-truncate">{{ company["address"] }}</span>
+                  </div>
+                {% endif %}
+              </div>
+            </div>
+          </a>
+        </div>
+      {% else %}
+        <div class="col-12 text-center text-muted py-5">
+          No services found matching your filters.
         </div>
       {% endfor %}
     </div>
@@ -96,13 +180,16 @@
 <script>
   var settings = {
     create: false,
+    maxOptions: null,
     sortField: {
       field: "text",
-      direction: "asc"
-  }};
-
-  new TomSelect('#countryList',settings);
-  new TomSelect('#citiesList',settings);
-
+      direction: "asc",
+    },
+  };
+  const tomCount = new TomSelect("#countryList", settings);
+  const tomCit = new TomSelect("#citiesList", settings);
+  const count = tomCount.getValue()
+  if (count)
+    renderCities(count)
 </script>
 {% endblock%}

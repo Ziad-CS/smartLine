@@ -97,16 +97,53 @@ nav .container-fluid {
   padding: 1.5px;
   border-radius: 100px;
 }
+/* * checkbox in profile manage company*/
+.custom-switch-box {
+  display: flex !important;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  /* background-color: #f8f9fa;
+  border: 1px solid #e9ecef; */
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+}
+/* .custom-switch-box:hover {
+  background-color: #f1f3f5;
+  border-color: #dee2e6;
+} */
+.custom-switch-box .form-check-input {
+  width: 2.4rem;
+  height: 1.3rem;
+  margin-top: 0;
+  cursor: pointer;
+  box-shadow: none !important;
+}
+.form-check-input {
+  background-color: #e2e8f0 !important;
+}
+.custom-switch-box .form-check-input:checked {
+  background-color: #0d6efd !important;
+  border-color: #0d6efd !important;
+}
+.custom-switch-box .form-check-label {
+  cursor: pointer;
+  user-select: none;
+  font-size: 0.9rem;
+}
+.custom-input:disabled {
+  background-color: #e9ecef;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+/* * eror flash */
 .flash-error {
   width: 70%;
   position: fixed;
   z-index: 99999;
   font-size: 1.2em;
 }
-/* .flash-box {
-  background-color: #0000002e !important;
-  
-} */
 .alert-no {
   border: var(--bs-danger) 2px solid!important;
   color: var(--bs-danger);
@@ -120,8 +157,8 @@ nav .container-fluid {
 #toastContainer {
   position: fixed;
   top: 20px;
-  left: 20px; /* أو right: 20px إذا كان الموقع بالإنجليزية */
-  z-index: 9999;
+  right: 20px; 
+  z-index: 999999;
   display: flex;
   flex-direction: column;
   gap: 15px;
@@ -136,21 +173,23 @@ nav .container-fluid {
   display: flex;
   align-items: center;
   gap: 12px;
-  font-size: 15px;
+  font-size: 20px;
   font-weight: 500;
   transform: translateX(-150%);
   opacity: 0;
-  transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  transition: all 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 }
 .custom-toast.show {
   transform: translateX(0);
   opacity: 1;
 }
 .toast-error {
+  background-color: #ff4d4f;
   border-right: 5px solid #ff4d4f;
   color: #333;
 }
 .toast-success {
+  background-color: #28a745;
   border-right: 5px solid #28a745;
   color: #333;
 }
@@ -163,7 +202,16 @@ color: #ff4d4f;
 .toast-success .toast-icon {
   color: #28a745; 
 }
+.field-error {
+    display: none;
+    color: #dc3545;
+    margin-top: 4px;
+    font-size: 13px;
+}
 
+.form-control.input-error {
+    border-color: #dc3545;
+}
 .buttons-cont {
   display: inline-flex;
   align-items: center;
@@ -298,7 +346,10 @@ color: #ff4d4f;
 .modal-backdrop.show {
   opacity: 0.6;
 }
-
+.dark-close:disabled {
+  opacity: 0.1;
+  color: #6d0c0c;
+}
 .textarea-comp {
   resize: none !important;
   overflow-y: auto;
@@ -333,8 +384,30 @@ color: #ff4d4f;
 .clear-icon:hover {
   color: #333;
 }
+.service-card {
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  background: #ffffff;
+}
 
-@media (max-width : 991px) {
+.service-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06) !important;
+}
+
+.service-card-closed {
+  opacity: 0.75;
+  background-color: #fafafa;
+}
+
+.service-icon {
+  transition: background-color 0.2s;
+}
+
+.service-card:hover .service-icon {
+  background-color: rgba(13, 110, 253, 0.15) !important;
+}
+
+@media (max-width : 991.25px) {
   .non-collapse {
     display: flex;
   }

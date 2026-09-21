@@ -68,7 +68,7 @@
                     <label class="form-label small fw-semibold text-muted">Company Name</label>
                     <input type="text" name="company_name" class="form-control" placeholder="e.g. SmartTech Solutions" required minlength="3" maxlength="50">
                   </div>
-                  <select class="form-select bg-light border-0">
+                  <select class="form-select bg-light border-0" name="category">
                     <option value="clinics" selected>Clinics & Healthcare</option>
                     <option value="banks">Banks & Finance</option>
                     <option value="government_offices">Government Offices</option>
@@ -93,20 +93,20 @@
                         <div class="modal-body">
                           <div class="mb-3">
                             <label for="countryList" class="form-label small fw-semibold text-secondary mb-1">Country</label>
-                            <select id="countryList" name="country" placeholder="Search country..." class="form-select form-select-lg custom-input">
+                            <select id="countryList" name="country" placeholder="Search country..." class="form-select form-select-lg custom-input" data-my-country="{{ session.get('country') }}" >
                               {% for country in countries %}
                                 <option value="{{ country['name'] |lower }}" {% if session.get('country') |lower == country['name'] |lower %} selected {% endif %}>
-                                  {{ country["name"] }} 
+                                  {{ country["name"]}} 
                                 </option>
                               {% endfor %}
                             </select>
                           </div>
                           <div class="mb-3">
                             <label for="citiesList" class="form-label small fw-semibold text-secondary mb-1">City</label>
-                            <select id="citiesList" name="city" placeholder="Search city..." class="form-select form-select-lg custom-input">
+                            <select id="citiesList" name="city" placeholder="Search city..." class="form-select form-select-lg custom-input" data-my-city="{{ session.get('city') }}">
                               {% for city in cities %}
                                 <option value="{{ city|lower }}" {% if session.get('city')|lower == city|lower %}selected{% endif %}>
-                                  {{ city }}
+                                  {{ city}}
                                 </option>
                               {% endfor %}
                             </select>
@@ -192,9 +192,9 @@
                 <form action="/profile/upgrade/manager" method="POST" class="text-start">
                   <div class="mb-3">
                     <label class="form-label small fw-semibold text-muted">Company Name</label>
-                    <input type="text" name="company_name" class="form-control" placeholder="e.g. SmartTech Solutions" required minlength="3" maxlength="50">
+                    <input type="text" name="company_name" id="company_name" class="form-control" placeholder="e.g. SmartTech Solutions" minlength="3" maxlength="50">
                   </div>
-                  <select class="form-select bg-light border-0">
+                  <select class="form-select bg-light border-0" name="category" id="regCategory">
                     <option value="clinics" selected>Clinics & Healthcare</option>
                     <option value="banks">Banks & Finance</option>
                     <option value="government_offices">Government Offices</option>
@@ -219,20 +219,20 @@
                         <div class="modal-body">
                           <div class="mb-3">
                             <label for="countryList" class="form-label small fw-semibold text-secondary mb-1">Country</label>
-                            <select id="countryList" name="country" placeholder="Search country..." class="form-select form-select-lg custom-input">
+                            <select id="countryList" name="country" placeholder="Search country..." class="form-select form-select-lg custom-input" data-my-country="{{ session.get('country') }}" >
                               {% for country in countries %}
                                 <option value="{{ country['name'] |lower }}" {% if session.get('country') |lower == country['name'] |lower %} selected {% endif %}>
-                                  {{ country["name"] }} 
+                                  {{ country["name"]}} 
                                 </option>
                               {% endfor %}
                             </select>
                           </div>
                           <div class="mb-3">
                             <label for="citiesList" class="form-label small fw-semibold text-secondary mb-1">City</label>
-                            <select id="citiesList" name="city" placeholder="Search city..." class="form-select form-select-lg custom-input">
+                            <select id="citiesList" name="city" placeholder="Search city..." class="form-select form-select-lg custom-input" data-my-city="{{ session.get('city') }}">
                               {% for city in cities %}
                                 <option value="{{ city|lower }}" {% if session.get('city')|lower == city|lower %}selected{% endif %}>
-                                  {{ city }}
+                                  {{ city}}
                                 </option>
                               {% endfor %}
                             </select>
@@ -345,26 +345,26 @@
               </div>
 
               <!-- Form Body -->
-              <form action="/manager/profile/update-info/" method="POST">
+              <form action="/manager/profile/update-info/" method="POST" id="company_edits">
                 <div class="modal-body px-3 py-2">
                   
                   <!-- Company Name -->
                   <div class="mb-3">
                     <label class="form-label small fw-semibold text-secondary mb-1">Company Name</label>
-                    <input type="text" name="company_name" class="form-control form-control-lg custom-input" 
-                          value="{{ managerdetails.name if managerdetails else '' }}" placeholder="e.g. Vodafone Hub" required maxlength="100">
+                    <input type="text" name="company_name" id="cName" class="form-control form-control-lg custom-input" 
+                          value="{{ managerdetails.get('name') if managerdetails else '' }}" placeholder="e.g. Vodafone Hub" maxlength="100">
                   </div>
 
                   <!-- Category -->
                   <div class="mb-3">
                     <label class="form-label small fw-semibold text-secondary mb-1">Category</label>
-                    <select name="category" class="form-select form-select-lg custom-input" required>
-                      <option value="clinics" {% if managerdetails and managerdetails.category == 'clinics' %}selected{% endif %}>Clinics & Healthcare</option>
-                      <option value="banks" {% if managerdetails and managerdetails.category == 'banks' %}selected{% endif %}>Banks & Finance</option>
-                      <option value="government_offices" {% if managerdetails and managerdetails.category == 'government_offices' %}selected{% endif %}>Government Offices</option>
-                      <option value="telecom" {% if managerdetails and managerdetails.category == 'telecom' %}selected{% endif %}>Telecom & Customer Service</option>
-                      <option value="edu" {% if managerdetails and managerdetails.category == 'edu' %}selected{% endif %}>Education</option>
-                      <option value="other" {% if managerdetails and managerdetails.category == 'other' %}selected{% endif %}>Other</option>
+                    <select name="category" class="form-select form-select-lg custom-input" id="cCategory">
+                      <option value="clinics" {% if managerdetails and managerdetails.cat == 'clinics' %}selected{% endif %}>Clinics & Healthcare</option>
+                      <option value="banks" {% if managerdetails and managerdetails.cat == 'banks' %}selected{% endif %}>Banks & Finance</option>
+                      <option value="government_offices" {% if managerdetails and managerdetails.cat == 'government_offices' %}selected{% endif %}>Government Offices</option>
+                      <option value="telecom" {% if managerdetails and managerdetails.cat == 'telecom' %}selected{% endif %}>Telecom & Customer Service</option>
+                      <option value="edu" {% if managerdetails and managerdetails.cat == 'edu' %}selected{% endif %}>Education</option>
+                      <option value="other" {% if managerdetails and managerdetails.cat == 'other' %}selected{% endif %}>Other</option>
                     </select>
                   </div>
 
@@ -372,20 +372,20 @@
                   <div class="row g-2 mb-3">
                     <div class="mb-3">
                       <label for="countryList" class="form-label small fw-semibold text-secondary mb-1">Country</label>
-                      <select id="countryList" name="country" placeholder="Search country..." class="form-select form-select-lg custom-input">
+                      <select id="countryList" name="country" placeholder="Search country..." class="form-select form-select-lg custom-input" data-my-country="{{ session.get('country') }}" >
                         {% for country in countries %}
                           <option value="{{ country['name'] |lower }}" {% if session.get('country') |lower == country['name'] |lower %} selected {% endif %}>
-                            {{ country["name"] }} 
+                            {{ country["name"]}} 
                           </option>
                         {% endfor %}
                       </select>
                     </div>
                     <div class="mb-3">
                       <label for="citiesList" class="form-label small fw-semibold text-secondary mb-1">City</label>
-                      <select id="citiesList" name="city" placeholder="Search city..." class="form-select form-select-lg custom-input">
+                      <select id="citiesList" name="city" placeholder="Search city..." class="form-select form-select-lg custom-input" data-my-city="{{ session.get('city') }}">
                         {% for city in cities %}
                           <option value="{{ city|lower }}" {% if session.get('city')|lower == city|lower %}selected{% endif %}>
-                            {{ city }}
+                            {{ city}}
                           </option>
                         {% endfor %}
                       </select>
@@ -396,13 +396,32 @@
                   <div class="row g-2 mb-3">
                     <div class="col-6">
                       <label class="form-label small fw-semibold text-secondary mb-1">Opening Time</label>
-                      <input type="time" name="opening_time" class="form-control form-control-lg custom-input" 
-                            value="{{ managerdetails.opening if managerdetails else '09:00' | trim}}">
+                      <input type="time" name="opening_time" id="cOpen" class="form-control form-control-lg custom-input dark-close"
+                            {% if managerdetails and managerdetails.opening == '00:00' and managerdetails.closing == '00:00' %}
+                              value="" disabled
+                            {% else %}
+                              value="{{ (managerdetails.opening if managerdetails and managerdetails.opening else '09:00') | trim }}"
+                            {% endif %}>
                     </div>
                     <div class="col-6">
                       <label class="form-label small fw-semibold text-secondary mb-1">Closing Time</label>
-                      <input type="time" name="closing_time" class="form-control form-control-lg custom-input" 
-                            value="{{- managerdetails.closing if managerdetails else '17:00' | trim -}}">
+                      <input type="time" name="closing_time" id="cClose" class="form-control form-control-lg custom-input dark-close"
+                            {% if managerdetails and managerdetails.opening == '00:00' and managerdetails.closing == '00:00' %}
+                              value="" disabled
+                            {% else %}
+                              value="{{ (managerdetails.closing if managerdetails and managerdetails.opening else '17:00') | trim }}"
+                            {% endif %}>
+                    </div>
+                  </div>
+                  <div class="col-12 mt-2">
+                    <div class="form-check form-switch custom-switch-box">
+
+                      <input class="form-check-input" type="checkbox" role="switch" id="is_24_hours" name="is_24_hours"
+                      {% if managerdetails and managerdetails.opening == '00:00' and managerdetails.closing == '00:00' %}checked{% endif %}>
+
+                      <label class="form-check-label small fw-semibold text-secondary" for="is_24_hours">
+                        Open 24 Hours
+                      </label>
                     </div>
                   </div>
 
@@ -411,12 +430,12 @@
                     <div class="col-7">
                       <label class="form-label small fw-semibold text-secondary mb-1">Address</label>
                       <input type="text" name="address" class="form-control form-control-lg custom-input" 
-                            value="{{ managerdetails.address if managerdetails else '' }}" placeholder="12 El-Nasr St, Maadi">
+                            value="{{ managerdetails.address if managerdetails else '' }}" placeholder="12 El-Nasr St, Maadi" id="cAddress">
                     </div>
                     <div class="col-5">
                       <label class="form-label small fw-semibold text-secondary mb-1">Phone</label>
                       <input type="tel" name="phone" class="form-control form-control-lg custom-input" 
-                            value="{{ managerdetails.phone if managerdetails else '' }}" placeholder="02-12345678">
+                            value="{{ managerdetails.phone if managerdetails else '' }}" placeholder="02-12345678" id="cPhone">
                     </div>
                   </div>
 
@@ -426,7 +445,8 @@
                     <textarea name="description" rows="2" class="form-control custom-input textarea-comp" 
                               placeholder="Brief overview of services provided..."
                               maxlength="150"
-                              minlength="10">{{ managerdetails.description if managerdetails else '' }}</textarea>
+                              minlength="10"
+                              id="cDescription">{{ managerdetails.description if managerdetails else '' }}</textarea>
                   </div>
                 </div>
 
@@ -435,7 +455,7 @@
                   <button type="button" class="btn btn-light rounded-pill flex-grow-1 py-2 fw-semibold text-secondary" data-bs-dismiss="modal">
                     Cancel
                   </button>
-                  <button type="submit" class="btn btn-primary-navy rounded-pill flex-grow-1 py-2 fw-semibold text-white">
+                  <button type="submit" class="btn btn-primary-navy rounded-pill flex-grow-1 py-2 fw-semibold text-white" id="save_company_edits">
                     Save Changes
                   </button>
                 </div>
@@ -487,12 +507,16 @@
 <script>
   var settings = {
     create: false,
+    maxOptions: null,
     sortField: {
       field: "text",
-      direction: "asc"
-  }};
-
-  new TomSelect('#countryList',settings);
-  new TomSelect('#citiesList',settings);
+      direction: "asc",
+    },
+  };
+  const tomCount = new TomSelect("#countryList", settings);
+  const tomCit = new TomSelect("#citiesList", settings);
+  const count = tomCount.getValue()
+  if (count)
+    renderCities(count)
 </script>
 {% endblock%}

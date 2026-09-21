@@ -1,9 +1,11 @@
 # import requests
-from flask import Flask ,redirect, render_template, session, flash
+from flask import Flask ,redirect, jsonify, render_template, session, flash
 from functools import wraps
 from cs50 import SQL
 import random
 from datetime import datetime
+import requests
+import json
 
 import smtplib
 from email.message import EmailMessage
@@ -133,4 +135,31 @@ def estimation(prov_est, customer_est = None) :
   else :
     total_est_time = 0
   return total_est_time
+
+def getCities(country) :
+  if country != 'egypt' and country != 'palestinian territory occupied':
+    api_url = f"https://countriesnow.space/api/v0.1/countries/cities"
+    payload = {"country" : country}
+    try :
+      data = requests.post(api_url, json=payload, timeout=5)
+      if data.status_code == 200 :
+        response_data = data.json()
+        cities = response_data.get("data", "")
+        return jsonify(cities), 200
+      else :
+        return jsonify({'error' : 'Failed ro fetch from exrernal API'}), 500
+    except requests.exceptions.Timeout :
+      return jsonify({'error' : "External API timed out"}), 500
+    except Exception as e :
+      return jsonify({'error' : str(e)}), 500
+  elif country == 'egypt' :
+    file_path = os.path.join(os.path.dirname(__file__), "static", "egCities.json")
+    with open(file_path, "r", encoding="utf-8") as file:
+      cities = json.load(file)
+      return jsonify(cities), 200
+  elif country == 'palestinian territory occupied' :
+    file_path = os.path.join(os.path.dirname(__file__), "static", "palestineCities.json")
+    with open(file_path, "r", encoding="utf-8") as file:
+      cities = json.load(file)
+      return jsonify(cities), 200
 

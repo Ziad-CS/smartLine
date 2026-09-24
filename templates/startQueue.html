@@ -533,16 +533,26 @@ block main %}
     a new queue now so your customers and visitors can join, take a turn, and
     get served easily.
   </p>
+  <form action="/provider/queue/start" id="servicesForm" method="post">
+    <div class="btn-group-primary">
+      <button type="submit" class="btn-start" id="startQueue">
+        <i class="bi bi-plus-lg"></i> Start a New Queue
+      </button>
+    </div>
 
-  <div class="btn-group-primary">
-    <a href="/provider/Queue/start" class="btn-start">
-      <i class="bi bi-plus-lg"></i> Start a New Queue
-    </a>
-  </div>
-
-  <div class="secondary-actions">
-    <a href="/dashboard" class="btn-secondary-link">Go to Dashboard</a>
-    <a href="/home" class="btn-secondary-link">Back to Home</a>
-  </div>
+    <div class="secondary-actions">
+      <a href="/home" class="btn-secondary-link">Back to Home</a>
+      <select name="service" id="service" class="form-select">
+        <option value="" disabled selected hidden> -- Select Service -- </option>
+        {% if services %}
+          {% for serv in services %}
+            <option value="{{serv['id']}}" class="cap"> {{serv['name']}} </option>
+          {% endfor %}
+        {% else %}
+          <option value="general service"> General Service </option>
+        {% endif %}
+      </select>
+    </div>
+  </form>
 </div>
 {% endblock %}

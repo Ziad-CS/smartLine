@@ -21,20 +21,30 @@
   <ul>
     {% for provider in providers %}
     <li>
-      <img src="https://ui-avatars.com/api/?name={{ provider['name'] }}&background=0D6EFD&color=fff" alt="Avatar" class="rounded-circle" width="64">
+      <img src="https://ui-avatars.com/api/?name={{ provider['user_name'] }}&background=0D6EFD&color=fff" alt="Avatar" class="rounded-circle" width="64">
       <div>
         <div>
-          <h2> {{ provider["name"] }} </h2>
+          <h2> {{ provider["user_name"] }} </h2>
           <p> {{ provider["email"] }} </p>
         </div>
         <div>
           <a href="/providers/history/{{ provider['id'] }}"> Details</a>
-          <a href="/providers/closeQueue">
+          
             <span> Status: </span>
             {% if provider["status"] == 'active' %}
-              <span class="badge bg-success text-white">Active</span>
+              <a href="/provider/Queue/endshift/{{provider['id']}}">
+                <span class="badge bg-success text-white">Active</span>
+              </a>
+              <span class="badge bg-light text-primary border">
+                <i class="bi bi-tag me-1"></i> {{ provider.serv_name }} 
+              </span>
             {% else %}
-              <span class="badge bg-secondary text-white">Closed/Offline</span>
+              <a href="/provider/Queue/endshift/{{provider['id']}}">
+                <span class="badge bg-secondary text-white">Closed/Offline</span>
+              </a>
+              <span class="badge bg-light text-danger border">
+                -- No Active Service --
+              </span>
             {% endif%}
           </a>
           <a href="/manager/providers/revoke/{{ provider['id'] }}"> Revoke</a>

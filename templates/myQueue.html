@@ -32,16 +32,36 @@
         <div class="d-flex justify-content-between align-items-start mb-4">
           <div class="d-flex align-items-center">
             <div class="bg-primary bg-opacity-10 text-primary rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 52px; height: 52px;">
-              <i class="bi bi-heart-pulse fs-4"></i>
+              <div class="service-icon rounded-circle bg-primary bg-opacity-10 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 48px; height: 48px;">
+                {% if 'clinic' in data['cat']|lower or 'health' in data['cat']|lower %}
+                  <i class="bi bi-heart-pulse text-primary fs-5"></i>
+                {% elif 'bank' in data['cat']|lower or 'finance' in data['cat']|lower %}
+                  <i class="bi bi-bank text-primary fs-5"></i>
+                {% elif 'government' in data['cat']|lower %}
+                  <i class="bi bi-file-earmark-text text-primary fs-5"></i>
+                {% elif 'telecom' in data['cat']|lower %}
+                  <i class="bi bi-broadcast text-primary fs-5"></i>
+                {% elif 'edu' in data['cat']|lower %}
+                  <i class="bi bi-mortarboard text-primary fs-5"></i>
+                {% else %}
+                  <i class="bi bi-building text-primary fs-5"></i>
+                {% endif %}
+              </div>
             </div>
             <div>
-              <h5 class="fw-bold text-dark mb-0">{{ queue_name or 'General Checkup' }}</h5>
-              <small class="text-muted">{{ company_name or 'Helwan Medical Center' }}</small>
+              <h5 class="fw-bold text-dark mb-0">{{ data['service'] or 'General Service' }}</h5>
+              <small class="text-muted">{{ data['comp_name'] or ''}}</small>
             </div>
           </div>
-          <span class="badge rounded-pill bg-success-subtle text-success px-3 py-2 fw-semibold">
-            {{ user_status or 'Waiting' }}
-          </span>
+          {% if data['status'] == 'serving' %}
+            <span class="badge rounded-pill bg-success-subtle text-success px-3 py-2 fw-semibold">
+              Serving
+            </span>
+          {% elif data['status'] == 'waiting' %}
+            <span class="badge rounded-pill bg-warning-subtle text-warning px-3 py-2 fw-semibold">
+              Waiting
+            </span>
+          {% endif %}
         </div>
 
         <!-- Key Numbers (3 Columns) -->
@@ -51,7 +71,11 @@
               <i class="bi bi-people me-1 text-primary"></i>
               <span>Your position</span>
             </div>
-            <h4 class="fw-bold text-dark mb-0">{{ my_position }}<span class="text-muted fs-6 fw-normal">/{{ total_waiting }}</span></h4>
+            {% if data['position'] %}
+              <h4 class="fw-bold text-dark mb-0">{{ data['position'] | int}} <span class="text-muted fs-6 fw-normal">/ {{ data['line'] }}</span></h4>
+            {% else %}
+            <h4 class="fw-bold text-dark mb-0"> It's your turn !</h4>
+            {% endif%}
           </div>
 
           <div class="col-4">
@@ -59,7 +83,11 @@
               <i class="bi bi-clock me-1 text-primary"></i>
               <span>Estimated wait time</span>
             </div>
-            <h4 class="fw-bold text-dark mb-0">~ {{ est_wait }} <span class="fs-6 fw-normal">min</span></h4>
+            {% if data['waiting'] %}
+              <h4 class="fw-bold text-dark mb-0">~ {{ data['waiting'] | near}} <span class="fs-6 fw-normal">min</span></h4>
+            {% else %}
+              <h4 class="fw-bold text-dark mb-0"> Soon </h4>
+            {% endif%}
           </div>
 
           <div class="col-4">
@@ -67,7 +95,7 @@
               <i class="bi bi-building me-1 text-primary"></i>
               <span>Provider</span>
             </div>
-            <h6 class="fw-bold text-dark mb-0 text-truncate">{{ provider_name }}</h6>
+            <h6 class="fw-bold text-dark mb-0 text-truncate">{{ data['provider_name'] }}</h6>
           </div>
         </div>
 
@@ -77,7 +105,11 @@
             <i class="bi bi-graph-up-arrow text-primary fs-5 me-2"></i>
             <div>
               <span class="text-muted d-block" style="font-size: 0.75rem;">Average service time</span>
-              <span class="fw-bold text-dark">{{ avg_service_time }} min</span>
+              {% if data['avg'] %}
+                <span class="fw-bold text-dark">{{ data['avg'] | near}} min</span>
+              {% else %}
+                <span class="fw-bold text-dark"> Calculating... </span>
+              {% endif%}
             </div>
           </div>
           
@@ -85,7 +117,11 @@
             <i class="bi bi-star-fill text-warning fs-5 me-2"></i>
             <div>
               <span class="text-muted d-block" style="font-size: 0.75rem;">Average rating</span>
-              <span class="fw-bold text-dark">{{ avg_rating }} <span class="text-muted fw-normal">({{ reviews_count }})</span></span>
+              {% if data['rating'] %}
+                <span class="fw-bold text-dark">{{ data['rating'] | near }} <span class="text-muted fw-normal">({{ data['reviews'] }})</span></span>
+              {% else %}
+                <span class="fw-bold text-dark"> New </span>
+              {% endif%}
             </div>
           </div>
         </div>

@@ -5,7 +5,7 @@ from flask_session import Session
 import requests
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from functions import apology, login_required, guest_ban, send_otp, calculate_change, limitFloat, estimation, clear_user_session, getCities
+from functions import apology, login_required, guest_ban, send_otp, calculate_change, limitFloat, estimation, clear_user_session, getCities, toMinutes, get_client_ip
 from datetime import datetime, timedelta
 import random
 import string
@@ -57,6 +57,7 @@ def inject_roles():
   if comp :
     return dict(my_roles=my_roles, comp=comp[0]["name"])
   return dict(my_roles=my_roles, comp= "" )
+
 @app.route("/")
 @login_required
 def index():
@@ -74,7 +75,6 @@ def register():
     email = request.form.get("email")
     password = request.form.get("password")
     confirmation = request.form.get("confirmation")
-
 
     if email:
       if len(email) > 128 :
@@ -115,6 +115,7 @@ def register():
 
     db.execute("INSERT INTO users (name, email, hash_pass, verification_code) VALUES (?, ?, ?, ?)"
                ,name , email.strip().lower(), generate_password_hash(password), code)
+    
     session["user_id"] = db.execute("SELECT id FROM users WHERE email = ?", email.strip().lower())[0]["id"]
     session["login_state"] = 1
     session["name"] = name
@@ -311,7 +312,7 @@ def findQueue() :
     LOWER(companies.country) = ? AND
     LOWER(companies.city) = ?
   """
-  print("FIxxxXXXxxxXXXX " + country)
+
   params.append(country)
   params.append(city)
     
@@ -324,7 +325,6 @@ def findQueue() :
   else :
     sql += " ORDER BY companies.created_at DESC"
 
-  print(f"DEBUG: country param = {country!r} , {city!r}")
   companies = db.execute(sql, *params)
 
   for company in companies :
@@ -352,30 +352,29 @@ def findQueue() :
     logs = db.execute("SELECT service_logs.* FROM service_logs JOIN queues ON queues.id = service_logs.queue_id JOIN providers ON providers.id = queues.provider_id WHERE providers.manager_id = ? AND stars IS NOT NULL", company["manager_id"])
     open_counters = len(queues)
     if logs :
-      reviews = len(logs)
+      reviews = 0
       rate = 0
       for log in logs :
-        rate += int(log["stars"])
-      rate /= reviews
+        if log["stars"] :
+          rate += int(log["stars"])
+          reviews += 1
+      if reviews :
+        rate /= reviews
     else :
       reviews = 0
       rate = 0
 
     lowest_time = float('inf')
-    lowest_time_id = -1
+    # lowest_time_id = -1
     for queue in queues :
       total_est_time = 0
       prov_log = db.execute("SELECT service_logs.* FROM service_logs WHERE end_time IS NOT NULL AND queue_id IN (SELECT id FROM queues WHERE provider_id = ?) ORDER BY start_time DESC LIMIT 100", queue["provider_id"])
-      avg_prov_time = 0
-      if prov_log :
-        total_prov_time = 0
-        for est in prov_log :
-          start_time = datetime.strptime(est["start_time"], "%Y-%m-%d %H:%M:%S")
-          end_time = datetime.strptime(est["end_time"], "%Y-%m-%d %H:%M:%S")
-          total_prov_time += (end_time - start_time).total_seconds() / 60
-        avg_prov_time = total_prov_time / len(prov_log)
+      avg_prov_time = estimation(prov_log)
       if avg_prov_time :
-        line = db.execute("SELECT * FROM queue_entries WHERE queue_id = ?", queue["id"])
+        line = db.execute("SELECT * FROM queue_entries WHERE queue_id = ? AND status != 'done'", queue["id"])
+        if not line:
+          lowest_time = 0
+          break
         for user in line :
           user_log = db.execute("SELECT * FROM service_logs WHERE end_time IS NOT NULL AND user_id = ? ORDER BY start_time DESC LIMIT 5", user["user_id"])
           avg_customer_time = 0
@@ -391,7 +390,7 @@ def findQueue() :
             total_est_time += avg_prov_time
       if total_est_time < lowest_time and total_est_time > 0:
         lowest_time = total_est_time
-        lowest_time_id = queue["id"]
+        # lowest_time_id = queue["id"]
     if lowest_time == float('inf'):
       lowest_time = 0
     company["open_counters"] = open_counters
@@ -402,11 +401,356 @@ def findQueue() :
   return render_template("findQueue.html", companies=companies, countries=countries, cities=cities)
 
 
+@app.route("/customer/company/<comp_id>", methods=["GET"])
+@login_required
+def QueuesOfCompany(comp_id) :
+  company = db.execute("SELECT * FROM companies WHERE id = ?", comp_id)[0]
+  # ! comp data
+  # * change category from data key to visible name
+  match company["category"] :
+      case 'clinics':
+        company["category"] = 'Clinics & Healthcare'
+      case 'banks':
+        company["category"] = 'Banks & Finance'
+      case 'government_offices':
+        company["category"] = 'Government Offices'
+      case 'telecom':
+        company["category"] = 'Telecom & Customer Service'
+      case 'edu':
+        company["category"] = 'Education'
+      case 'other':
+        company["category"] = 'Other'
+  # * calc stars and reviews
+  queues = db.execute("SELECT queues.* FROM queues JOIN providers ON providers.id = queues.provider_id JOIN managers ON managers.id = providers.manager_id WHERE queues.closed_at IS NULL AND managers.id = ?", company["manager_id"])
+  logs = db.execute("SELECT service_logs.* FROM service_logs JOIN queues ON queues.id = service_logs.queue_id JOIN providers ON providers.id = queues.provider_id WHERE providers.manager_id = ? AND stars IS NOT NULL", company["manager_id"])
+  if logs :
+    reviews = 0
+    rate = 0
+    for log in logs :
+      if log["stars"] :
+          rate += int(log["stars"])
+          reviews += 1
+    if reviews :
+      rate /= reviews
+  else :
+    reviews = 0
+    rate = 0
+
+    # * check opened or closed
+  if company['opening_time'] and company['closing_time'] :
+    now_time = toMinutes(datetime.now().time())
+    open_time = toMinutes(datetime.strptime(company['opening_time'], "%H:%M").time())
+    close_time = toMinutes(datetime.strptime(company['closing_time'], "%H:%M").time())
+    diff = close_time - open_time
+    if open_time and close_time :
+      if (diff < 0) :
+        # ? if now time between before mid night will be greater than the both (postive)
+        # ? if now time between after mid night will be less than the both (negative)
+        open_test = now_time - open_time
+        close_test = now_time - close_time
+        if open_test >= 0 and close_test >= 0 :
+          status = 1
+        elif open_test <= 0 and close_test <= 0:
+          status = 1
+        else :
+          status = 0
+      else :
+        if (now_time - open_time) >= 0 and (now_time - close_time) <= 0 :
+          status = 1
+        else :
+          status = 0
+    else :
+      status = 1
+  else :
+    status = -1
+  comp_data = {
+    'name' : company["name"],
+    'cat' : company["category"],
+    'address' : company["address"],
+    'phone' : company["phone"],
+    'rate' : rate,
+    'reviews' : reviews,
+    # ? open or close status open = 1 , close = 0
+    'status' : status,
+    'open' : company["opening_time"],
+    'close' : company["closing_time"],
+    'desc' : company["description"],
+  }
+  # ! provs data
+
+  queues_data = []
+  lowest_time = float('inf')
+  lowest_time_queue_id = -1
+  serviceData = 0
+  started = 0
+  for queue in queues :
+    serving = db.execute("SELECT * FROM queue_entries WHERE status = 'serving' AND queue_id = ?", queue["id"])
+    started = 0
+    serviceData = None
+    if serving:
+      serviceData = db.execute("SELECT * FROM service_logs WHERE queue_entry_id = ? AND end_time IS NULL", serving[0]["id"])
+      if serviceData :
+        started = ( datetime.now() - datetime.strptime(serviceData[0]["start_time"], "%Y-%m-%d %H:%M:%S") ).total_seconds() / 60
+
+    prov = db.execute("SELECT users.* FROM users JOIN providers ON providers.user_id = users.id WHERE providers.id = ?", queue["provider_id"])[0]
+    serv = db.execute("SELECT * FROM services WHERE id = ?", queue["service_id"])
+    type = serv[0]['name'] if serv else 'General Service'
+    prov_log_limit = db.execute("SELECT service_logs.* FROM service_logs WHERE end_time IS NOT NULL AND queue_id IN (SELECT id FROM queues WHERE provider_id = ?) ORDER BY start_time DESC LIMIT 100", queue["provider_id"])
+    line = db.execute("SELECT * FROM queue_entries WHERE queue_id = ? AND status = 'waiting'", queue["id"])
+    avg_prov_time = estimation(prov_log_limit)
+    customer_est = []
+    serving_est = 0
+
+    if serving :
+      if serving[0]["user_id"] :
+        customer_est = db.execute("SELECT * FROM service_logs WHERE end_time IS NOT NULL AND user_id = ? ORDER BY start_time DESC LIMIT 5", serving[0]["user_id"])
+        serving_est = estimation(prov_log_limit, customer_est)
+    else :
+      serving_est = 0
+    if serving_est :
+      total_est_time = (serving_est - started) if serving_est - started > 0 else 0
+    else :
+      total_est_time = 0
+    if avg_prov_time : 
+      for user in line :
+        user_log = db.execute("SELECT * FROM service_logs WHERE end_time IS NOT NULL AND user_id = ? ORDER BY start_time DESC LIMIT 5", user["user_id"])
+        avg_customer_time = 0
+        if user_log :
+          total_customer_time = 0
+          for est in user_log :
+            start_time = datetime.strptime(est["start_time"], "%Y-%m-%d %H:%M:%S")
+            end_time = datetime.strptime(est["end_time"], "%Y-%m-%d %H:%M:%S")
+            total_customer_time += (end_time - start_time).total_seconds() / 60
+          avg_customer_time = total_customer_time / len(user_log)
+          total_est_time += avg_prov_time * 0.7 + avg_customer_time * 0.3
+        else :
+          total_est_time += avg_prov_time
+
+    prov_log = db.execute("SELECT service_logs.* FROM service_logs WHERE end_time IS NOT NULL AND queue_id IN (SELECT id FROM queues WHERE provider_id = ?)", queue["provider_id"])
+    if prov_log :
+      reviews = 0
+      rate = 0
+      for log in prov_log :
+        if log["stars"] :
+          rate += int(log["stars"])
+          reviews += 1
+      if reviews :
+        rate /= reviews
+    else :
+      reviews = 0
+      rate = 0
+    
+    if lowest_time > total_est_time :
+      lowest_time = total_est_time
+      lowest_time_queue_id = queue['id']
+
+    nowServingLog = db.execute("SELECT * FROM service_logs WHERE queue_id = ? AND end_time IS NULL ORDER BY start_time DESC LIMIT 1", queue["id"])
+    if nowServingLog:
+      started = (datetime.now() - datetime.strptime(nowServingLog[0]["start_time"], "%Y-%m-%d %H:%M:%S")).total_seconds() / 60
+    else:
+      started = 0
+    if db.execute("SELECT * FROM queue_entries WHERE status = 'waiting' AND queue_id = ?", queue["id"]) :
+      break_test = db.execute("SELECT * FROM service_logs WHERE queue_id = ? ORDER BY end_time DESC  LIMIT 1", queue["id"])
+      if break_test :
+        break_time = (datetime.now() - datetime.strptime(break_test[0]["end_time"] , "%Y-%m-%d %H:%M:%S")).total_seconds() / 60
+      else :
+        break_time = 0
+    else :
+      break_time = 0
+    queues_data.append({
+      'name' : prov['name'],
+      'service' : type,
+      'waiting' : len(line),
+      'est' : total_est_time,
+      'avg' : avg_prov_time,
+      'rate' : rate,
+      'reviews' : reviews,
+      'status' : queue['status'],
+      'ago' : started,
+      'queue_id' : queue['id'],
+      'break_time' : break_time
+    })
+
+  return render_template("QueuesOfCompany.html", comp_data=comp_data, queues_data=queues_data, lowest_time_queue_id=lowest_time_queue_id)
+
+@app.route("/customer/join/<queue_id>", methods=["POST"])
+@login_required
+def join(queue_id) :
+  postion = db.execute("SELECT * FROM queue_entries WHERE queue_id = ? ORDER BY position DESC LIMIT 1", queue_id)
+  if postion :
+    next_postion = postion[0]["position"] + 1
+  else :
+    next_postion = 1
+  user = db.execute("SELECT * FROM users WHERE id = ?", session.get("user_id", -1))
+  if user :
+    found = db.execute("SELECT * FROM queue_entries WHERE user_id = ? AND status != 'done'", session["user_id"])
+    if not found :
+      db.execute("INSERT INTO queue_entries (queue_id, user_id, user_name, position, status) VALUES (?, ?, ?, ?, ?)", queue_id, session["user_id"], user[0]["name"], next_postion, 'waiting')
+    else :
+      flash("You already have an active queue ticket.", category="no")
+      return redirect("/customer/myQueue")
+  else :
+    ip = get_client_ip();
+    found = db.execute("SELECT * FROM queue_entries WHERE ip_address = ? AND status != 'done'", ip)
+    done = db.execute("SELECT * FROM queue_entries WHERE ip_address = ? AND status = 'done'", ip)
+    if len(done) >= 3  or session.get("serv_count", 4) >= 3:
+        flash("You have reached your guest limit (3 services). Please register or log in to continue.", category="no")
+        return redirect("/guest_ban")
+    if not found :
+      entry_id = db.execute("INSERT INTO queue_entries (queue_id, ip_address,user_name, position, status) VALUES (?, ?, ?, ?, ?)", queue_id, ip, session["name"], next_postion, 'waiting')
+      session["entry_id"] = entry_id
+    else :
+      flash("You already have a waiting ticket in this or another queue.", category="no")
+      return redirect("/customer/myQueue")
+
+  return redirect("/customer/myQueue")
+
+
 @app.route("/customer/myQueue")
 @login_required
 def myQueueCustomer() :
+  # * collect all data and test if guest
+  if session.get("login_state") != 2 and session["role"] == "user" and session.get("user_id", "") :
+    entre = db.execute("SELECT * FROM queue_entries WHERE user_id = ? AND status != 'done' ", session['user_id'])
+    if not entre :
+      return render_template("noJoinedQueue.html")
+    queue = db.execute("SELECT * FROM queues WHERE id = ?", entre[0]["queue_id"])
+    prov = db.execute("SELECT * FROM providers WHERE id = ?", queue[0]["provider_id"])
+    prov_info = db.execute("SELECT * FROM users WHERE id = ?", prov[0]["user_id"])
+    manager = db.execute("SELECT * FROM managers WHERE id = ?", prov[0]["manager_id"])
+    company = db.execute("SELECT * FROM companies WHERE manager_id = ?", manager[0]["id"])
+    prov_log_limit =  db.execute("SELECT service_logs.* FROM service_logs WHERE end_time IS NOT NULL AND queue_id IN (SELECT id FROM queues WHERE provider_id = ?) ORDER BY start_time DESC LIMIT 100", queue[0]["provider_id"])
+    prov_logs = db.execute("SELECT service_logs.id, stars FROM service_logs JOIN queues ON service_logs.queue_id = queues.id WHERE provider_id = ? AND stars IS NOT NULL", prov[0]["id"])
+    services = db.execute("SELECT * FROM services WHERE id = ?", queue[0]["service_id"])
+    user_log = db.execute("SELECT * FROM service_logs WHERE end_time IS NOT NULL AND user_id = ? ORDER BY start_time DESC LIMIT 5", session["user_id"])
+  elif session.get("login_state") == 2 :
+    ip = get_client_ip()
+    if session.get("entry_id"):
+      entre = db.execute("SELECT * FROM queue_entries WHERE id = ? AND ip_address = ? AND status != 'done'", session["entry_id"], ip)
+    else:
+      entre = db.execute("SELECT * FROM queue_entries WHERE ip_address = ? AND status != 'done' ORDER BY joined_at DESC LIMIT 1", ip)
+    if not entre :
+      return render_template("noJoinedQueue.html")
+    queue = db.execute("SELECT * FROM queues WHERE id = ?", entre[0]["queue_id"])
+    prov = db.execute("SELECT * FROM providers WHERE id = ?", queue[0]["provider_id"])
+    prov_info = db.execute("SELECT * FROM users WHERE id = ?", prov[0]["user_id"])
+    manager = db.execute("SELECT * FROM managers WHERE id = ?", prov[0]["manager_id"])
+    company = db.execute("SELECT * FROM companies WHERE manager_id = ?", manager[0]["id"])
+    prov_log_limit = db.execute("SELECT service_logs.* FROM service_logs WHERE end_time IS NOT NULL AND queue_id IN (SELECT id FROM queues WHERE provider_id = ?) ORDER BY start_time DESC LIMIT 100", queue[0]["provider_id"])
+    prov_logs = db.execute("SELECT service_logs.id, stars FROM service_logs JOIN queues ON service_logs.queue_id = queues.id WHERE provider_id = ? AND stars IS NOT NULL", prov[0]["id"])
+    services = db.execute("SELECT * FROM services WHERE id = ?", queue[0]["service_id"])
+  else :
+    flash("", category="no")
+    return redirect("/logout")
+  
+  # * get position and waiting time
+  position = 0
+  line = db.execute("SELECT * FROM queue_entries WHERE queue_id = ? AND status != 'done' ORDER BY position ASC", queue[0]["id"])
+  wait = 0
+  started = 0
+  serviceData = None
+  total_est_time = 0
+  avg_prov_time = estimation(prov_log_limit)
+  if entre[0]['status'] == 'waiting' :
+    serving = db.execute("SELECT * FROM queue_entries WHERE status = 'serving' AND queue_id = ?", queue[0]["id"])
+    # ? +1 for get the position before serving by one and another one to get the position in eq.
+    if serving :
+      before_serving = serving[0]['position'] + 1
+      position = entre[0]['position'] - before_serving + 1
 
-  return render_template("myQueue.html")
+    if serving:
+      serviceData = db.execute("SELECT * FROM service_logs WHERE queue_entry_id = ? AND end_time IS NULL", serving[0]["id"])
+      if serviceData :
+        started = ( datetime.now() - datetime.strptime(serviceData[0]["start_time"], "%Y-%m-%d %H:%M:%S") ).total_seconds() / 60
+    if serving :
+      if serving[0]["user_id"] :
+        serv_est = db.execute("SELECT * FROM service_logs WHERE end_time IS NOT NULL AND user_id = ? ORDER BY end_time DESC LIMIT 5", serving[0]["user_id"])
+        serving_est = estimation(prov_log_limit, serv_est)
+    else :
+      serving_est = 0
+    if serving_est :
+      total_est_time = (serving_est - started) if serving_est - started > 0 else 0
+    else :
+      total_est_time = 0
+
+    if avg_prov_time : 
+      for c in line :
+        if c['position'] == entre[0]['position']:
+          break
+        c_est = db.execute("SELECT * FROM service_logs WHERE end_time IS NOT NULL AND user_id = ? ORDER BY end_time DESC LIMIT 5", c["user_id"])
+        if c_est :
+          total_customer_time = 0
+          notRealService = 0
+          avg_customer_time = 0
+          for est in c_est :
+            start_time = datetime.strptime(est["start_time"], "%Y-%m-%d %H:%M:%S")
+            end_time = datetime.strptime(est["end_time"], "%Y-%m-%d %H:%M:%S")
+            duration = (end_time - start_time).total_seconds()
+            if duration <= 90:
+              notRealService += 1
+              continue
+            total_customer_time += (end_time - start_time).total_seconds() / 60
+          if (len(c_est) - notRealService) :
+            avg_customer_time = total_customer_time / (len(c_est) - notRealService)
+          if avg_customer_time :
+            total_est_time = avg_prov_time * 0.7 + avg_customer_time * 0.3
+          else :
+            total_est_time = avg_prov_time
+        else :
+          total_est_time = avg_prov_time
+    else :
+        total_est_time = 0
+    wait = total_est_time
+  
+  if prov_logs :
+    reviews = 0
+    rate = 0
+    for log in prov_logs :
+      if log["stars"] :
+        rate += int(log["stars"])
+        reviews += 1
+    if reviews :
+      rate /= reviews
+  else :
+    reviews = 0
+    rate = 0
+
+  if not services :
+    services = [{'name' : 'General Service'}]
+
+  data = {
+    'cat': company[0]['category'],
+    'service': services[0]['name'],
+    'comp_name': company[0]['name'],
+    'status': entre[0]['status'],
+    'line' : len(line) - 1 if serving else len(line),
+
+    'position': position,
+    'waiting': wait,
+
+    'provider_name': prov_info[0]['name'],
+    'avg': avg_prov_time,
+    'rating': rate,
+    'reviews': reviews
+  }
+
+  return render_template("myQueue.html", data=data)
+
+
+@app.route("/customer/leaveQueue")
+@login_required
+def leaveQueue() :
+
+  return redirect("")
+
+
+@app.route("/customer/history")
+@login_required
+def CustomerHistory() :
+
+  return redirect("")
+
+
 # * For Provider Role
 
 @app.route("/provider/Queue", methods=["GET"])
@@ -437,36 +781,31 @@ def providerQueue() :
 
   else :
     lastlog = db.execute("SELECT * FROM service_logs WHERE queue_id = ? AND end_time IS NOT NULL", lastqueue[0]["id"])
-    lastTotal_customers = len(lastlog)
-    total_seconds = 0
-    for log in lastlog :
-      pastAvg = datetime.strptime(log["end_time"], "%Y-%m-%d %H:%M:%S") - datetime.strptime(log["start_time"], "%Y-%m-%d %H:%M:%S")
-      total_seconds += pastAvg.total_seconds()
-    if lastTotal_customers != 0:
-      lastAvgMinutes = total_seconds / 60 / lastTotal_customers
+    lastAvgMinutes = estimation(lastlog)
   logs = db.execute("SELECT service_logs.id, stars FROM service_logs JOIN queues ON service_logs.queue_id = queues.id WHERE provider_id = ? AND stars IS NOT NULL", prov[0]["id"])
-  reviews = len(logs)
-  rate = 0
-  for log in logs :
-    rate += int(log["stars"])
-  if reviews != 0 :
-    rate /= reviews
+
+  if logs :
+    reviews = 0
+    rate = 0
+    for log in logs :
+      if log["stars"] :
+        rate += int(log["stars"])
+        reviews += 1
+    if reviews :
+      rate /= reviews
+  else :
+    reviews = 0
+    rate = 0
 
     # * For every thing in the present about Provider
 
   nowQueue = db.execute("SELECT * FROM queues WHERE provider_id = ? AND (status = 'active' OR (status = 'closed' AND closed_at IS NULL))", prov[0]["id"])
   nowAvgMinutes = 0
   if not nowQueue :
-    return render_template("startQueue.html")
+    services = db.execute("SELECT * FROM services WHERE company_id = ?", comp[0]["id"])
+    return render_template("startQueue.html", services=services)
   nowlog = db.execute("SELECT * FROM service_logs WHERE queue_id = ? AND end_time IS NOT NULL", nowQueue[0]["id"])
-  nowTotal_customers = len(nowlog)
-  total_seconds = 0
-  for log in nowlog :
-    if log["end_time"] is not None :
-      nowAvg = datetime.strptime(log["end_time"], "%Y-%m-%d %H:%M:%S") - datetime.strptime(log["start_time"], "%Y-%m-%d %H:%M:%S")
-      total_seconds += nowAvg.total_seconds()
-  if nowTotal_customers != 0 :
-    nowAvgMinutes = total_seconds / 60 / nowTotal_customers
+  nowAvgMinutes = estimation(nowlog)
 
     # * Now serving
 
@@ -476,13 +815,19 @@ def providerQueue() :
     if serviceData :
       started = ( datetime.now() - datetime.strptime(serviceData[0]["start_time"], "%Y-%m-%d %H:%M:%S") ).total_seconds() / 60
     else :
-      # inseart data
+      # insert data
       if serving[0]["user_id"] :
         db.execute("INSERT INTO service_logs (queue_id, user_id, queue_entry_id, user_name, company_name, start_time) VALUES (?, ?, ?, ?, ?, ?)",
                     nowQueue[0]["id"], serving[0]["user_id"], serving[0]["id"], serving[0]["user_name"],comp[0]["name"] , datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
       else :
         db.execute("INSERT INTO service_logs (queue_id, queue_entry_id, user_name, company_name, start_time) VALUES (?, ?, ?, ?, ?)",
                     nowQueue[0]["id"], serving[0]["id"], serving[0]["user_name"],comp[0]["name"] ,datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+        
+        if session.get("serv_count") :
+          session["serv_count"] += 1
+        else :
+          session["serv_count"] = 1
+
       started = 0
 
     dt_object = datetime.strptime(serving[0]["joined_at"], "%Y-%m-%d %H:%M:%S")
@@ -494,12 +839,11 @@ def providerQueue() :
     # * In waiting and serving estimated time
   prov_est = db.execute("SELECT * FROM service_logs WHERE end_time IS NOT NULL AND queue_id IN (SELECT id FROM queues WHERE provider_id = ?) ORDER BY start_time DESC LIMIT 100", prov[0]["id"])
   customer_est = []
+  serving_est = 0
   if serving :
     if serving[0]["user_id"] :
         customer_est = db.execute("SELECT * FROM service_logs WHERE end_time IS NOT NULL AND user_id = ? ORDER BY start_time DESC LIMIT 5", serving[0]["user_id"])
-      
-  serving_est = estimation(prov_est, customer_est)
-
+        serving_est = estimation(prov_est, customer_est)
   nowWaiting = db.execute("SELECT * FROM queue_entries WHERE status = 'waiting' AND queue_id = ?", nowQueue[0]["id"])
   waiting = []
   total_est_time = (serving_est - started) if serving_est - started > 0 else 0
@@ -516,15 +860,16 @@ def providerQueue() :
     else :
       customer_est = []
     # * to calc the waiting time and save the estimation time of customer above
+    client_duration = estimation(prov_est, customer_est)
     waiting.append({
       "name" : name,
       "type" : user_type,
       "ago" : joined_ago,
       "time" : joined_time,
-      "est" : total_est_time
+      "est" : round(client_duration, 1),
+      "wait_time" : round(total_est_time, 1)
     })
-    total_est_time += estimation(prov_est, customer_est)
-
+    total_est_time += client_duration
   return render_template("providerQueue.html",
                           servedToDay=len(nowlog),
                           servedCompare=calculate_change(len(nowlog), len(lastlog)),
@@ -536,11 +881,12 @@ def providerQueue() :
                           joined=joined,
                           numWaiting=len(nowWaiting),
                           waiting=waiting,
-                          serving_est=serving_est
+                          serving_est=serving_est,
+                          prov_id=prov[0]['id']
                           )
 
 
-@app.route("/provider/Queue/start", methods=["GET"])
+@app.route("/provider/queue/start", methods=["POST"])
 @login_required
 @guest_ban
 def start_queue() :
@@ -556,8 +902,12 @@ def start_queue() :
   if nowQueue:
     flash("Close your current queue first", category="no")
     return redirect("/provider/Queue")
-
-  db.execute("INSERT INTO queues (provider_id, status) VALUES(?, 'active')", prov[0]["id"])
+  service = request.form.get("service")
+  if service :
+    serv = service
+  else :
+    serv = 'General Service'
+  db.execute("INSERT INTO queues (provider_id, service_id, status) VALUES(?, ?, 'active')", prov[0]["id"], serv)
   flash("Queue started successfully", category="yes")
   return redirect("/provider/Queue")
 
@@ -566,45 +916,50 @@ def start_queue() :
 @login_required
 @guest_ban
 def call_next():
-    if session.get("role") != "prov":
-        flash("Unauthorized access", category="no")
-        return redirect("/")
-        
-    prov = db.execute("SELECT * FROM providers WHERE user_id = ?", session["user_id"])
-    if not prov :
-      flash("Unauthorized access", category="no")
-      return redirect("/")
-    nowQueue = db.execute("SELECT * FROM queues WHERE provider_id = ? AND (status = 'active' OR (status = 'closed' AND closed_at IS NULL))", prov[0]["id"])
-    
-    if not nowQueue:
-        flash("you doesn't start any queue", category="no")
-        return redirect("/provider/Queue")
-
-    serving = db.execute("SELECT * FROM queue_entries WHERE status = 'serving' AND queue_id = ?", nowQueue[0]["id"])
-    if serving:
-        flash("You must end the current service first", category="no")
-        return redirect("/provider/Queue")
-
-    next_customer = db.execute("SELECT * FROM queue_entries WHERE status = 'waiting' AND queue_id = ? ORDER BY joined_at ASC, id ASC LIMIT 1", nowQueue[0]["id"])
-    
-    if next_customer:
-        customer = next_customer[0]
-        manager = db.execute("SELECT * FROM managers WHERE id = ?", prov[0]["manager_id"])
-        comp = db.execute("SELECT * FROM companies WHERE manager_id = ?", manager[0]["id"])
-        
-        db.execute("UPDATE queue_entries SET status = 'serving' WHERE id = ?", customer["id"])
-        log = db.execute("SELECT * FROM service_logs WHERE user_id = ? AND end_time IS NULL", customer["user_id"])
-        if not log :
-          if customer["user_id"]:
-              db.execute("INSERT INTO service_logs (queue_id, user_id, queue_entry_id, user_name, company_name, start_time) VALUES (?, ?, ?, ?, ?, ?)",
-                    nowQueue[0]["id"], customer["user_id"], customer["id"], customer["user_name"],comp[0]["name"] , datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-          else:
-              db.execute("INSERT INTO service_logs (queue_id, queue_entry_id, user_name, company_name, start_time) VALUES (?, ?, ?, ?, ?)",
-                    nowQueue[0]["id"], customer["id"], customer["user_name"],comp[0]["name"] ,datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-    else:
-        flash("No customers waiting", category="no")
-        
+  if session.get("role") != "prov":
+    flash("Unauthorized access", category="no")
+    return redirect("/")
+      
+  prov = db.execute("SELECT * FROM providers WHERE user_id = ?", session["user_id"])
+  if not prov :
+    flash("Unauthorized access", category="no")
+    return redirect("/")
+  nowQueue = db.execute("SELECT * FROM queues WHERE provider_id = ? AND (status = 'active' OR (status = 'closed' AND closed_at IS NULL))", prov[0]["id"])
+  
+  if not nowQueue:
+    flash("you doesn't start any queue", category="no")
     return redirect("/provider/Queue")
+
+  serving = db.execute("SELECT * FROM queue_entries WHERE status = 'serving' AND queue_id = ?", nowQueue[0]["id"])
+  if serving:
+    flash("You must end the current service first", category="no")
+    return redirect("/provider/Queue")
+
+  next_customer = db.execute("SELECT * FROM queue_entries WHERE status = 'waiting' AND queue_id = ? ORDER BY joined_at ASC, id ASC LIMIT 1", nowQueue[0]["id"])
+  
+  if next_customer:
+    customer = next_customer[0]
+    manager = db.execute("SELECT * FROM managers WHERE id = ?", prov[0]["manager_id"])
+    comp = db.execute("SELECT * FROM companies WHERE manager_id = ?", manager[0]["id"])
+    
+    db.execute("UPDATE queue_entries SET status = 'serving' WHERE id = ?", customer["id"])
+    log = db.execute("SELECT * FROM service_logs WHERE user_id = ? AND end_time IS NULL", customer["user_id"])
+    if not log :
+      if customer["user_id"]:
+        db.execute("INSERT INTO service_logs (queue_id, user_id, queue_entry_id, user_name, company_name, start_time) VALUES (?, ?, ?, ?, ?, ?)",
+              nowQueue[0]["id"], customer["user_id"], customer["id"], customer["user_name"],comp[0]["name"] , datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+      else:
+        db.execute("INSERT INTO service_logs (queue_id, queue_entry_id, user_name, company_name, start_time) VALUES (?, ?, ?, ?, ?)",
+              nowQueue[0]["id"], customer["id"], customer["user_name"],comp[0]["name"] ,datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+        
+        if session.get("serv_count") :
+          session["serv_count"] += 1
+        else :
+          session["serv_count"] = 1
+  else:
+    flash("No customers waiting", category="no")
+      
+  return redirect("/provider/Queue")
 
 
 @app.route("/provider/Queue/skip")
@@ -687,26 +1042,36 @@ def end_service():
   return redirect("/provider/Queue")
 
 
-@app.route("/provider/Queue/endshift")
+@app.route("/provider/Queue/endshift/<prov_id>")
 @login_required
 @guest_ban
-def end_shift():
-    if session.get("role") != "prov":
-        flash("Unauthorized access", category="no")
+def end_shift(prov_id):
+    if session.get("role") != "prov" and session.get("role") != "manager":
+        flash("This action is only available for providers and managers", category="no")
         return redirect("/")
-        
-    prov = db.execute("SELECT * FROM providers WHERE user_id = ?", session["user_id"])
-    if not prov:
-        flash("Unauthorized access", category="no")
+    prov = db.execute("SELECT * FROM providers WHERE id = ?", prov_id)
+    if not prov :
+      flash("Provider not found or currently unavailable", category="no")
+      return redirect("/")
+    
+    manager = db.execute("SELECT * FROM managers WHERE user_id = ?", session['user_id'])
+    if prov[0]['user_id'] != session['user_id'] :
+      if manager :
+        if prov[0]['manager_id'] != manager[0]['id'] :
+          flash("Unauthorized access", category="no")
+          return redirect("/")
+      else :
+        flash("You are not authorized to end another provider's shift.", category="no")
         return redirect("/")
         
     nowQueue = db.execute("SELECT * FROM queues WHERE provider_id = ? AND (status = 'active' OR (status = 'closed' AND closed_at IS NULL))", prov[0]["id"])
     if not nowQueue:
         flash("No active queue found.", category="no")
-        return redirect("/provider/Queue")
+
+        return redirect("/provider/Queue") if session.get("role") == "manager" else redirect("/")
     if nowQueue[0]["status"] == "closed" :
       flash("You are already End your shift.Finish remaining customers.", category="no")
-      return redirect("/provider/Queue")
+      return redirect("/provider/Queue") if session.get("role") == "manager" else redirect("/")
     
     queue_id = nowQueue[0]["id"]
     remaining = db.execute("SELECT * FROM queue_entries WHERE queue_id = ? AND status IN ('waiting', 'serving')", nowQueue[0]["id"])
@@ -717,7 +1082,7 @@ def end_shift():
     else :
       db.execute("UPDATE queues SET status = 'closed' WHERE id = ?", nowQueue[0]["id"])
       flash("Queue is now closed for new customers. Finish remaining customers.", category="yes")
-    return redirect("/provider/Queue")
+    return redirect("/")
 
 
 # * For Manager Role
@@ -761,7 +1126,12 @@ def managerProviders() :
     return redirect("/manager/providers")
 
   else :
-    providers = db.execute("SELECT providers.id AS id, users.name, users.email, queues.status  FROM providers JOIN users ON providers.user_id = users.id LEFT JOIN queues ON queues.provider_id = providers.id AND queues.status = 'active' WHERE manager_id = ? GROUP BY providers.id", manager[0]["id"])
+    providers = db.execute("""SELECT providers.id AS id, users.name AS user_name, users.email, queues.status, services.name AS serv_name
+                            FROM providers 
+                            JOIN users ON providers.user_id = users.id 
+                            LEFT JOIN queues ON queues.provider_id = providers.id AND queues.status = 'active' 
+                            LEFT JOIN services ON services.id = queues.service_id
+                            WHERE manager_id = ?""", manager[0]["id"])
     return render_template("managerProviders.html", providers=providers)
 
 
@@ -802,7 +1172,6 @@ def updateInfoManager() :
     flash("Unauthorized access", category="no")
     return redirect("/")
   
-  # user = db.execute("SELECT * FROM users WHERE id = ?", session["user_id"])
   with open("static/countries.json", "r", encoding="utf-8") as file:
     countries = json.load(file)
   with open("static/EGcities.json", "r", encoding="utf-8") as file:
@@ -891,6 +1260,13 @@ def updateInfoManager() :
     if (opening and not closing) or (not opening and closing) :
       flash("Please enter opening and closing time", category="no")
       return redirect("/profile")
+
+    diff = toMinutes(closing) - toMinutes(opening)
+    if diff < 0 :
+      diff += 24 * 60
+    if diff < 30 : 
+      flash("Shift must be at least 30 minutes.", category="no")
+      return redirect("/profile")
   else :
     opening_time = "00:00"
     closing_time = "00:00"
@@ -954,6 +1330,49 @@ def updateInfoManager() :
   return redirect("/profile")
 
 
+@app.route ("/manager/profile/update-info/addServices/", methods=["POST"])
+@login_required
+@guest_ban
+def addServices() :
+  if session["role"] != "manager" :
+    flash("Unauthorized access", category="no")
+    return redirect("/")
+  manager = db.execute("SELECT * FROM managers WHERE user_id = ?", session["user_id"])
+  if not manager:
+    flash("Unauthorized access", category="no")
+    return redirect("/")
+  company = db.execute("SELECT * FROM companies WHERE manager_id = ?", manager[0]["id"])
+  data = request.get_json()
+  service = data.get("service", "").strip()
+  if service :
+      db.execute("INSERT INTO services (company_id, name) VALUES (?, ?)", company[0]["id"], service)
+  
+  services = db.execute("SELECT * FROM services WHERE company_id = ?", company[0]["id"])
+  return jsonify(services)
+
+@app.route ("/manager/profile/update-info/removeServices/<serv_id>", methods=["POST"])
+@login_required
+@guest_ban
+def removeServices(serv_id) :
+  if session["role"] != "manager" :
+    flash("Unauthorized access", category="no")
+    return redirect("/")
+  manager = db.execute("SELECT * FROM managers WHERE user_id = ?", session["user_id"])
+  if not manager:
+    flash("Unauthorized access", category="no")
+    return redirect("/")
+
+  comp = db.execute("SELECT * FROM companies WHERE manager_id = ?", manager[0]["id"])
+  my_serv = db.execute("SELECT * FROM services WHERE company_id = ? AND id = ?", comp[0]["id"], serv_id)
+
+  if my_serv :
+    db.execute("DELETE FROM services WHERE id = ?", serv_id);
+  else :
+    flash("Unauthorized access", category="no")
+    return redirect("/profile")
+  return jsonify({"success" : True});
+
+
 # * For all Roles after Sign In
     # * Switching roles between accessed roles.
     # * All Roles is (Customer, Provider, Manager) and Guest access
@@ -1005,16 +1424,18 @@ def profile() :
 
     if session.get("role") == "prov" :
       prov = db.execute("SELECT providers.*, managers.id AS manager_id FROM providers LEFT JOIN managers ON managers.id = providers.manager_id WHERE providers.user_id = ?", session["user_id"])
-      comp = db.execute("SELECT * FROM companies WHERE manager_id = ?", prov[0]["manager_id"])
-      comp = comp[0]["name"]
-      code = prov[0]["invite_code"]
-      if not comp :
+      c = db.execute("SELECT * FROM companies WHERE manager_id = ?", prov[0]["manager_id"])
+      if not c :
         comp = ""
+      else :
+        comp ["name"]
+      code = prov[0]["invite_code"]
     elif session.get("role") == "manager" :
       manager = db.execute("SELECT * FROM managers WHERE user_id = ?", session["user_id"])
       details = db.execute("SELECT * FROM companies WHERE manager_id = ?", manager[0]["id"])
       if details :
         company = details[0]
+        services = db.execute("SELECT * FROM services WHERE company_id = ?", company["id"])
         managerdetails = {
           'name': company.get('name', '') or '',
           'cat': company.get('category', '') or '',
@@ -1024,7 +1445,8 @@ def profile() :
           'closing': company.get('closing_time', '') or '',
           'address': company.get('address', '') or '',
           'phone': company.get('phone', '') or '',
-          'description': company.get('description', '') or ''
+          'description': company.get('description', '') or '',
+          'services' : services
         }
     with open("static/countries.json", "r", encoding="utf-8") as file:
       countries = json.load(file)
@@ -1045,13 +1467,6 @@ def updateInfoProfile() :
     if len(name) < 40 and len(name) > 2 :
       db.execute("UPDATE users SET name = ? WHERE id = ?", name, session["user_id"])
       session["name"] = name
-
-  # if session.get("role") == "manager" :
-  #   manager =  db.execute("SELECT * FROM managers WHERE user_id = ?", session["user_id"])[0]
-  #   comp = request.form.get("comp")
-  #   if comp :
-  #     if comp.strip() != manager["company_name"] :
-  #       db.execute("UPDATE managers SET company_name = ? WHERE user_id = ?", comp.strip(), session["user_id"])
 
   if email :
     new_email = email.strip().lower()
@@ -1086,25 +1501,28 @@ def get_cities():
   return getCities(country)
     
 
-@app.route("/changeLocation")
+@app.route("/changeLocation", methods=["GET", "POST"])
 @login_required
 def changeLocation() :
-  location = request.args.get("location")
-  country = request.args.get("selectedCountryName")
-  city = request.args.get("selectedCity")
+  data = request.get_json()
+
+  location = data.get("href")
+  country = data.get("selectedCountryName")
+  city = data.get("selectedCity")
 
   session["country"] = country
   session["city"] = city
   if session.get("login_state", -1) == 0 :
     db.execute("UPDATE users SET country = ?, city = ? WHERE id = ?", country.strip().lower(), city.strip().lower(),session["user_id"])
 
-    if  location.endswith("?") :
-      add_country_city = f"country={country}&city={city}"
-    elif "?" in location:
-      add_country_city = f"&country={country}&city={city}"
-    else :
-      add_country_city = f"?country={country}&city={city}"
+  if  location.endswith("?") :
+    add_country_city = f"country={country}&city={city}"
+  elif "?" in location:
+    add_country_city = f"&country={country}&city={city}"
+  else :
+    add_country_city = f"?country={country}&city={city}"
   return location + add_country_city
+
 # * Change Password
 
 @app.route ("/profile/change-password/", methods=["POST"])
@@ -1203,7 +1621,7 @@ def becomeProvider() :
   return redirect("/provider/Queue")
 
 
-# * Change invite code for (providers)
+# * Change invite code for (providers) or leave the company
 
 @app.route ("/profile/change-code/", methods=["GET"])
 @login_required
@@ -1215,4 +1633,26 @@ def changeCode() :
     if not prov :
       break
   db.execute("UPDATE providers SET invite_code = ? WHERE user_id = ?", code, session["user_id"])
+  return redirect("/profile")
+
+@app.route ("/profile/leave_company/", methods=["POST"])
+@login_required
+@guest_ban
+def leave_company() :
+  if session.get("role") != "prov" :
+    flash("Your are not Provider", category="no")
+    return redirect("/")
+  prov = db.execute("SELECT * FROM providers WHERE user_id = ?", session["user_id"])
+  if not prov:
+    flash("Provider profile not found.", category="no")
+    return redirect("/profile")
+  if not prov[0]["manager_id"] :
+    flash("You are not currently linked to any company.", category="no")
+    return redirect("/profile")
+  queue = db.execute("SELECT * FROM queues WHERE provider_id = ? AND status = 'active'", prov[0]["id"])
+  if queue :
+    flash("You cannot leave the company while you have an active queue. Please close your queue first.", category="no")
+    return redirect("/provider/Queue")
+  db.execute("UPDATE providers SET manager_id = NULL WHERE id = ?", prov[0]["id"])
+  flash("You have successfully left the company", category="yes")
   return redirect("/profile")

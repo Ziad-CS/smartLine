@@ -219,6 +219,9 @@ function renderCities(selectedCountry) {
 //   document.addEventListener("DOMContentLoaded", () => {
 //     country.dispatchEvent(new Event("change"));
 //   });
+function loadServicesByCity(cityName) {
+  console.log("Filtering cards for:", cityName);
+}
 
 function manageLocationMenu() {
   const countryCheck = document.getElementById("countryList");
@@ -255,9 +258,18 @@ function manageLocationMenu() {
           pramams.set("comp_name", compName.value);
           pramams.set("cat", category.value);
         }
-        fetch(
-          `/changeLocation?location=${window.location.pathname + "?" + pramams.toString()}&selectedCity=${selectedCity}&selectedCountryName=${selectedCountryName}`,
-        )
+        let place = {
+          'selectedCountryName' : selectedCountryName,
+          'selectedCity' : selectedCity ,
+          'href' : window.location.pathname + "?" + pramams.toString()
+        }
+        fetch(`/changeLocation`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(place),
+        })
           .then((response) => {
             if (!response.ok) {
               throw new Error("Network response was not ok");
@@ -270,6 +282,9 @@ function manageLocationMenu() {
               const countryMatches = newUrl.match(/country=/g);
               if (countryMatches && countryMatches.length >= 2) {
                 url = newUrl.replace(/country=[^&]*&/, "");
+              }
+              else {
+                url = newUrl;
               }
               window.location.href = url.trim();
             }
@@ -286,6 +301,7 @@ function manageLocationMenu() {
 }
 
 document.addEventListener("DOMContentLoaded", manageLocationMenu);
+  
   // ! edite company data
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -318,6 +334,54 @@ document.addEventListener("DOMContentLoaded", () => {
       const [hours, minutes] = timeStr.split(":").map(Number);
       return hours * 60 + minutes;
     }
+    country.control_input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        e.stopPropagation();
+        city.focus();
+      }
+    });
+
+    city.control_input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        e.stopPropagation();
+        open.focus();
+      }
+    });
+    form.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && e.target.tagName !== "TEXTAREA") {
+        if (e.target === name) {
+          e.preventDefault();
+          cat.focus();
+        }
+        if (e.target === cat) {
+          e.preventDefault();
+          country.focus();
+        }
+        if (e.target === open) {
+          e.preventDefault();
+          close.focus();
+        }
+        if (e.target === close) {
+          e.preventDefault();
+          check.focus();
+        }
+        // * country and city is above EventListener Form
+        if (e.target === check) {
+          e.preventDefault();
+          address.focus();
+        }
+        if (e.target === address) {
+          e.preventDefault();
+          phone.focus();
+        }
+        if (e.target === phone) {
+          e.preventDefault();
+          desc.focus();
+        }
+      }
+    });
 
     name.addEventListener("blur", () => {
       if (!name.value || name.value.length > 100 || name.value.length <= 2) {
@@ -353,26 +417,6 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
 
-    // let countries = [];
-    // fetch("./static/countries.json")
-    //   .then((response) => {
-    //     if (!response.ok) throw new Error("File not found");
-    //     return response.json();
-    //   })
-    //   .then((data) => {
-    //     countries = data;
-    //   })
-    //   .catch((err) => console.error("Error reading file:", err));
-
-    // function ifIn(ref, test) {
-    //   len = ref.length;
-    //   for (let i = 0; i < len; i++)
-    //     if (test.value.trim().toLowerCase() == ref[i]["name"].trim().toLowerCase()) {
-    //       return true;
-    //     }
-    //   return false;
-    // }
-     // !
     country.on("blur", () => {
       // found = false
       // found = ifIn(countries, country);
@@ -589,16 +633,18 @@ document.addEventListener("DOMContentLoaded", () => {
           const openMinutes = timeToMinutes(oVal);
           const closeMinutes = timeToMinutes(cVal);
 
-          if (Math.abs(closeMinutes - openMinutes) < 30) {
+          let diff = closeMinutes - openMinutes;
+          if (diff < 0) {
+            diff += 24 * 60; // الشيفت عدّى منتصف الليل
+          }
+          if (diff < 30) {
             showError(open, "Shift must be at least 30 minutes.");
             showError(close, "Shift must be at least 30 minutes.");
             isopen = 0;
             isclose = 0;
             e.preventDefault();
             e.stopPropagation();
-            return;
-          } 
-          else {
+          } else {
             clearError(open);
             clearError(close);
             isopen = 1;
@@ -660,10 +706,95 @@ document.addEventListener("DOMContentLoaded", () => {
       }
       saveCompBtn.disabled = true;
       saveCompBtn.textContent = "Saving...";
-      // const modalEl = document.getElementById("locationModal");
-      // const modalInstance = bootstrap.Modal.getInstance(modalEl);
-      // modalInstance.hide();
+
     });
+    function addServiceChip() {
+      const input = document.getElementById("serviceInput");
+      const container = document.getElementById("servicesChipsContainer");
+      const val = input.value.trim();
+
+      if (!val) return;
+
+      // منع تكرار نفس اسم الخدمة
+      const existing = Array.from(
+        container.querySelectorAll("input[name='services[]']"),
+      ).map((el) => el.value.toLowerCase());
+      if (existing.includes(val.toLowerCase())) {
+        input.value = "";
+        return;
+      }
+      input.value = "";
+      input.focus();
+      const chips = document.getElementById("servicesChipsContainer");
+      fetch(`/manager/profile/update-info/addServices/`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ service: val }),
+      })
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error("Network error");
+          }
+          return response.json(); // عمل Parse تلقائي للـ JSON
+        })
+        .then((services) => {
+          chips.innerHTML = "";
+          services.forEach((serv) => {
+            span = document.createElement("span")
+            span.classList = "badge d-inline-flex align-items-center gap-2 px-3 py-2 rounded-pill bg-light-blue text-navy border border-subtle fw-medium shadow-sm"
+            span.innerHTML = `<span style="color: #0b1a30; font-size: 1.2em;"> ${serv["name"]} </span>
+                            <input type="hidden" name="services[]" value="${serv["id"]}">
+                            <i class="bi bi-x-circle-fill text-secondary cursor-pointer hover-danger services" role="button"></i>`;
+
+            chips.appendChild(span);
+            const deleteBtn = span.querySelector(".services");
+            deleteBtn.addEventListener("click", () => {
+              let hidden = deleteBtn.parentNode.getElementsByTagName('input');
+              if (!hidden) return;
+              console.log("Deleting service ID:", hidden[0].value);
+              console.log(hidden[0].value);
+              fetch(`/manager/profile/update-info/removeServices/${hidden[0].value}`, {
+                method: "POST",
+              })
+              .then((res) => res.json())
+              .catch((err) => console.error("Error deleting service:", err));
+              deleteBtn.parentNode.remove();
+              });
+          });
+        })
+    }
+
+    const serviceInput = document.getElementById("serviceInput");
+    const addServiceBtn = document.getElementById("addServiceBtn");
+    if (serviceInput) {
+      let clearBtns = document.querySelectorAll(".services");
+      form.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && e.target === serviceInput) {
+          e.preventDefault();
+          addServiceChip();
+        }
+      });
+      addServiceBtn.addEventListener("click", () =>{
+        addServiceChip()
+      })
+      clearBtns.forEach((btn) => {
+        btn.addEventListener("click", () =>{
+          let hidden = btn.parentNode.getElementsByTagName('input');
+          if (!hidden) return;
+          console.log("Deleting service ID:", hidden[0].value);
+          console.log(hidden[0].value);
+          btn.parentNode.remove();
+          fetch(`/manager/profile/update-info/removeServices/${hidden[0].value}`, {
+            method: "POST",
+          })
+            .then((res) => res.json())
+            .catch((err) => console.error("Error deleting service:", err));
+
+        });
+      });
+    }
   }
 });
 
@@ -679,30 +810,32 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 });
-// ! copy & past
-const countrySelect = document.getElementById('countryList');
-const citySelect = document.getElementById('citiesList');
-// // 1. تحديث المدن لما الدولة تتغير
-// countrySelect.addEventListener('change', async () => {
-//   const countryCode = countrySelect.value;
-  
-//   // طلب المدن من الـ Endpoint الداخلية الخاصة بك
-//   const response = await fetch(`/api/cities?country=${countryCode}`);
-//   const cities = await response.json();
-
-//   // تفريغ القائمة الحالية وإضافة المدن الجديدة
-//   citySelect.innerHTML = '';
-//   cities.forEach(city => {
-//     const opt = document.createElement('option');
-//     opt.value = city.name;
-//     opt.textContent = city.name;
-//     citySelect.appendChild(opt);
-//   });
-// });
-
-function loadServicesByCity(cityName) {
-  console.log("Filtering cards for:", cityName);
-  // fetch services for this city and update the DOM
+// ! provider queue start
+const startQueue = document.getElementById("startQueue");
+const service = document.getElementById("service");
+const servForm = document.getElementById("servicesForm");
+if (startQueue) {
+  startQueue.addEventListener("click", (e) => {
+    if (!service.value) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    showError(service, "Please select a service before starting the queue.");
+    service.classList.add("is-invalid", "shake-error");
+    setTimeout(() => service.classList.remove("shake-error"), 300);
+  });
+  service.addEventListener("change", () => {
+    if (service.value) {
+      service.classList.remove("is-invalid");
+      clearError(service);
+    }
+  })
+  servForm.addEventListener("submit", (e) => {
+    if (!service.value) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  })
 }
 // ! auto reload sec
 // function autoReloadInf(route) {

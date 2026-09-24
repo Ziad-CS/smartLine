@@ -1,5 +1,5 @@
 # import requests
-from flask import Flask ,redirect, jsonify, render_template, session, flash
+from flask import Flask ,redirect, request, jsonify, render_template, session, flash
 from functools import wraps
 from cs50 import SQL
 import random
@@ -35,6 +35,7 @@ def login_required(f):
 
   return decorated_function
 
+
 def guest_ban(f):
   @wraps(f)
   def decorated_function(*args, **kwargs):
@@ -44,6 +45,14 @@ def guest_ban(f):
     return f(*args, **kwargs)
 
   return decorated_function
+
+
+def get_client_ip() :
+  ip = request.headers.get('X-Forwarded-For')
+  if ip :
+    return ip.split(',')[0].strip()
+  return request.remote_addr
+
 
 def clear_user_session():
     # * Clear all application-specific session keys without wiping flash messages
@@ -84,6 +93,7 @@ def apology(message, code=400):
 
   return render_template("apology.html", top=code, bottom=escape(message)), code
 
+
 def send_otp(id) :
   user = db.execute("SELECT * FROM users WHERE id = ?", id)[0]
   email_html =render_template("otp.html",name=user["name"] ,code=user["verification_code"])
@@ -101,6 +111,7 @@ def send_otp(id) :
     server.login("smartline.authentication@gmail.com", os.environ.get("GMAIL_PASSWORD"))
     server.send_message(msg)
 
+
 def calculate_change(new_value, base_value):
   if base_value <= 0 :
     calc = 0
@@ -111,30 +122,54 @@ def calculate_change(new_value, base_value):
 def limitFloat( floatNum ):
   return f"{floatNum: ,.1f}"
 
+
 def estimation(prov_est, customer_est = None) :
   total_prov_time = 0
+  notRealService = 0
+  avg_prov_time = 0
+
   if prov_est :
-    for est in prov_est :
-      start_time = datetime.strptime(est["start_time"], "%Y-%m-%d %H:%M:%S")
-      end_time = datetime.strptime(est["end_time"], "%Y-%m-%d %H:%M:%S")
-      total_prov_time += (end_time - start_time).total_seconds() / 60
-    avg_prov_time = total_prov_time / len(prov_est)
-  
+    # ? this step if is list to check if get the input prov_est to dont calc it agin if i have it
+    if type(prov_est) is list :
+      for est in prov_est :
+        start_time = datetime.strptime(est["start_time"], "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(est["end_time"], "%Y-%m-%d %H:%M:%S")
+        duration = (end_time - start_time).total_seconds()
+        if duration <= 90:
+          notRealService += 1
+          continue
+        total_prov_time += (end_time - start_time).total_seconds() / 60
+      if (len(prov_est) - notRealService) :
+        avg_prov_time = total_prov_time / (len(prov_est) - notRealService)
+      else :
+        avg_prov_time = 5
+    else :
+      avg_prov_time = prov_est
+
     if customer_est :
       total_customer_time = 0
-      
+      notRealService = 0
+      avg_customer_time = 0
       for est in customer_est :
         start_time = datetime.strptime(est["start_time"], "%Y-%m-%d %H:%M:%S")
         end_time = datetime.strptime(est["end_time"], "%Y-%m-%d %H:%M:%S")
+        duration = (end_time - start_time).total_seconds()
+        if duration <= 90:
+          notRealService += 1
+          continue
         total_customer_time += (end_time - start_time).total_seconds() / 60
-      avg_customer_time = total_customer_time / len(customer_est)
-
-      total_est_time = avg_prov_time * 0.7 + avg_customer_time * 0.3
+      if (len(customer_est) - notRealService) :
+        avg_customer_time = total_customer_time / (len(customer_est) - notRealService)
+      if avg_customer_time :
+        total_est_time = avg_prov_time * 0.7 + avg_customer_time * 0.3
+      else :
+        total_est_time = avg_prov_time
     else :
       total_est_time = avg_prov_time
   else :
     total_est_time = 0
   return total_est_time
+
 
 def getCities(country) :
   if country != 'egypt' and country != 'palestinian territory occupied':
@@ -163,3 +198,6 @@ def getCities(country) :
       cities = json.load(file)
       return jsonify(cities), 200
 
+
+def toMinutes(t) :
+  return t.hour * 60 + t.minute

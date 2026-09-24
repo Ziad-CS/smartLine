@@ -3,7 +3,10 @@ CREATE TABLE users (
     name TEXT NOT NULL,
     email TEXT NOT NULL UNIQUE,
     hash_pass TEXT NOT NULL,
+    country TEXT DEFAULT 'Egypt',
+    city TEXT DEFAULT 'Cairo',
     is_verified BOOLEAN NOT NULL DEFAULT 0,
+    ip_address TEXT,
     verification_code TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -12,7 +15,6 @@ CREATE TABLE providers (
     user_id INTEGER NOT NULL UNIQUE,
     manager_id INTEGER,
     invite_code TEXT NOT NULL UNIQUE,
-    service_name TEXT DEFAULT 'General Service',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id),
     FOREIGN KEY (manager_id) REFERENCES managers(id)
@@ -28,6 +30,7 @@ CREATE TABLE queues (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     provider_id INTEGER NOT NULL,
     status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'closed')),
+    service_id INTEGER REFERENCES services(id),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     closed_at TIMESTAMP,
     FOREIGN KEY (provider_id) REFERENCES providers(id)
@@ -54,7 +57,8 @@ CREATE TABLE service_logs (
     end_time TIMESTAMP,
     stars INTEGER CHECK (stars BETWEEN 1 AND 5),
     FOREIGN KEY (queue_id) REFERENCES queues(id),
-    FOREIGN KEY (user_id) REFERENCES users(id)
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (queue_entry_id) REFERENCES queue_entries(id) ON DELETE SET NULL
 );
 CREATE TABLE companies (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -70,6 +74,13 @@ CREATE TABLE companies (
     description TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (manager_id) REFERENCES managers(id) ON DELETE CASCADE
+);
+CREATE TABLE services (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    company_id INTEGER NOT NULL,
+    name TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (company_id) REFERENCES companies(id)
 );
 CREATE VIRTUAL TABLE companies_fts USING fts5( company_id UNINDEXED, name, description, category );
 CREATE TRIGGER companies_ai AFTER INSERT ON companies BEGIN

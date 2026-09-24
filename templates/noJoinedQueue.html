@@ -1,0 +1,39 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    My Queue
+{% endblock %}
+
+{% block main %}
+  <div class="container py-5">
+    <div class="row justify-content-center">
+      <div class="col-md-7 col-lg-5">
+        <div class="card border-0 shadow-sm rounded-4 text-center p-4 p-md-5 bg-white">
+          
+          <div class="d-inline-flex align-items-center justify-content-center bg-light-subtle rounded-circle mx-auto mb-4" 
+              style="width: 100px; height: 100px; background-color: #f1f5f9;">
+            <i class="bi bi-ticket-perforated text-primary opacity-75" style="font-size: 3rem;"></i>
+          </div>
+
+          <h4 class="fw-bold text-navy mb-2" style="color: #0b1a30;">No Active Ticket</h4>
+          <p class="text-secondary small mb-4 px-2">
+            You haven't joined any queue yet. Explore available counters and grab your spot without waiting in physical lines.
+          </p>
+
+          <div class="d-grid gap-2 mb-3">
+            <a href="/customer/findQueue" class="btn btn-primary btn-lg rounded-pill py-2 fs-6 fw-semibold shadow-sm">
+              <i class="bi bi-search me-2"></i>Find a Queue
+            </a>
+          </div>
+
+          <div class="pt-2 border-top">
+            <a href="/customer/history" class="text-decoration-none small text-muted hover-underline d-inline-flex align-items-center gap-1">
+              <i class="bi bi-clock-history"></i> View previous visits in History
+            </a>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}

@@ -110,7 +110,7 @@
             </div>
           </div>
           <div>
-            <a href="/provider/Queue/endshift"> End Shift </a>
+            <a href="/provider/Queue/endshift/{{ prov_id }}"> End Shift </a>
           </div>
         {% endif %}
       </div>
@@ -138,8 +138,8 @@
                 </td>
                 <td> {{ customer['ago'] | near }} min ago ({{ customer['time'] }}) </td>
                 <td> {{ customer['type'] }} </td>
-                {% if customer['est'] > 0 %}
-                  <td> ~ {{ customer['est'] | near }} min</td>
+                {% if customer['wait_time'] > 0 %}
+                  <td> ~ {{ customer['wait_time'] | near }} min</td>
                 {% else %}
                   <td class="text-muted"> Soon </td>
                 {% endif %}

@@ -29,6 +29,11 @@
     </form>
     {% if session.get("role") == "prov"%}
       <a href="/profile/change-code"> Change my Invite code</a>
+      <form action="/profile/leave_company" method="POST">
+        <button type="submit" class="btn btn-outline-danger btn-sm">
+          Leave Company
+        </button>
+      </form>
     {% endif %}
   </div>
   <div>
@@ -333,7 +338,7 @@
         </div>
         <div class="modal fade" id="editCompanyModal" tabindex="-1" aria-labelledby="openModel" aria-hidden="true">
           <div class="modal-dialog modal-dialog-centered" style="max-width: 540px;">
-            <div class="modal-content border-0 shadow-lg" style="border-radius: 28px; padding: 1.5rem;">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 28px; padding: 1.5rem;margin-top: 60px;">
               <!-- Modal Header (بدون علامة X) -->
               <div class="modal-header border-0 pb-1 px-3 pt-2">
                 <div>
@@ -389,6 +394,43 @@
                           </option>
                         {% endfor %}
                       </select>
+                    </div>
+                  </div>
+
+                  <!-- Services Input & Chips Section -->
+                  <div class="mb-3">
+                    <label class="form-label small fw-semibold text-secondary mb-1">Company Services</label>
+                    <!-- حقل كتابة اسم الخدمة وزر علامة الصح -->
+                    <div class="input-group mb-2 shadow-sm rounded-4 overflow-hidden">
+                      <input 
+                        type="text" 
+                        id="serviceInput" 
+                        class="form-control border-end-0 border-subtle" 
+                        placeholder="e.g. General Consultation, Cashier..."
+                        aria-label="Add service"
+                      >
+                      <button 
+                        class="btn btn-primary bg-navy border-start-0 px-3" 
+                        type="button" 
+                        id="addServiceBtn"
+                        title="Add Service"
+                      >
+                        <i class="bi bi-check-lg fs-5"></i>
+                      </button>
+                    </div>
+
+                    <!-- حاوية البابلز (Chips Container) -->
+                    <div id="servicesChipsContainer" class="d-flex flex-wrap gap-2 pt-1">
+                      <!-- بابلز محملة مسبقاً من قاعدة البيانات (Jinja2) -->
+                      {% if managerdetails['services'] %}
+                        {% for s in managerdetails['services'] %}
+                          <span class="badge d-inline-flex align-items-center gap-2 px-3 py-2 rounded-pill bg-light-blue text-navy border border-subtle fw-medium shadow-sm">
+                            <span style="color: #0b1a30; font-size: 1.2em;"> {{ s["name"] }} </span>
+                            <input type="hidden" name="services[]" value="{{ s['id'] }}">
+                            <i class="bi bi-x-circle-fill text-secondary cursor-pointer hover-danger services" role="button"></i>
+                          </span>
+                        {% endfor %}
+                      {% endif %}
                     </div>
                   </div>
 
@@ -505,18 +547,23 @@
 {% endblock %}
 {% block js %}
 <script>
-  var settings = {
-    create: false,
-    maxOptions: null,
-    sortField: {
-      field: "text",
-      direction: "asc",
-    },
-  };
-  const tomCount = new TomSelect("#countryList", settings);
-  const tomCit = new TomSelect("#citiesList", settings);
-  const count = tomCount.getValue()
-  if (count)
-    renderCities(count)
+  const countryEl = document.getElementById("countryList");
+  const cityEl = document.getElementById("citiesList");
+
+  if (countryEl && cityEl) {
+    var settings = {
+      create: false,
+      maxOptions: null,
+      sortField: {
+        field: "text",
+        direction: "asc",
+      },
+    };
+    const tomCount = new TomSelect("#countryList", settings);
+    const tomCit = new TomSelect("#citiesList", settings);
+    const count = tomCount.getValue()
+    if (count)
+      renderCities(count)
+  }
 </script>
 {% endblock%}

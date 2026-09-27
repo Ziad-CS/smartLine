@@ -6,7 +6,6 @@ CREATE TABLE users (
     country TEXT DEFAULT 'Egypt',
     city TEXT DEFAULT 'Cairo',
     is_verified BOOLEAN NOT NULL DEFAULT 0,
-    ip_address TEXT,
     verification_code TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -43,6 +42,7 @@ CREATE TABLE queue_entries (
     position INTEGER NOT NULL,
     status TEXT NOT NULL DEFAULT 'waiting' CHECK (status IN ('waiting', 'serving', 'done')),
     joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    ip_address TEXT,
     FOREIGN KEY (queue_id) REFERENCES queues(id),
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
@@ -55,6 +55,7 @@ CREATE TABLE service_logs (
     company_name TEXT NOT NULL,
     start_time TIMESTAMP NOT NULL,
     end_time TIMESTAMP,
+    ip_address TEXT,
     stars INTEGER CHECK (stars BETWEEN 1 AND 5),
     FOREIGN KEY (queue_id) REFERENCES queues(id),
     FOREIGN KEY (user_id) REFERENCES users(id),

@@ -837,13 +837,47 @@ if (startQueue) {
     }
   })
 }
-// ! auto reload sec
-// function autoReloadInf(route) {
-//   fetch(route);
-//   setInterval(autoReloadInf
-//     , 30000
-//   );
-// }
-// function autoReload(route) {
-//   fetch(route);
-// }
+// ! Live update for pages
+//    * Main and comman for Live
+  function initLivePolling(endpoint, onUpdate, intervalMs = 15000) {
+    let isFetching = false;
+    async function fetchData() {
+        if (isFetching) return;
+        isFetching = true;
+      try {
+        const response = await fetch(endpoint);
+        if (!response.ok) {
+          return;
+        }
+        const data = await response.json()
+
+        if (typeof onUpdate === 'function') {
+          console.log('reload')
+          onUpdate(data);
+        }
+
+      } catch (error) {
+        console.log(new Error(`Polling error: ${error}`));
+      } finally {
+        isFetching = false
+      }
+    }
+    let timerId = setInterval(fetchData, intervalMs);
+
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) {
+        clearInterval(timerId);
+        timerId = null;
+      } else {
+        fetchData();
+        if (!timerId) {
+          timerId = setInterval(fetchData, intervalMs);
+        }
+      }
+    });
+
+    return timerId
+  }
+
+
+

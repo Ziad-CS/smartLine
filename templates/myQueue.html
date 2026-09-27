@@ -54,11 +54,11 @@
             </div>
           </div>
           {% if data['status'] == 'serving' %}
-            <span class="badge rounded-pill bg-success-subtle text-success px-3 py-2 fw-semibold">
+            <span class="badge rounded-pill bg-success-subtle text-success px-3 py-2 fw-semibold" id="status">
               Serving
             </span>
           {% elif data['status'] == 'waiting' %}
-            <span class="badge rounded-pill bg-warning-subtle text-warning px-3 py-2 fw-semibold">
+            <span class="badge rounded-pill bg-warning-subtle text-warning px-3 py-2 fw-semibold" id="status">
               Waiting
             </span>
           {% endif %}
@@ -72,21 +72,29 @@
               <span>Your position</span>
             </div>
             {% if data['position'] %}
-              <h4 class="fw-bold text-dark mb-0">{{ data['position'] | int}} <span class="text-muted fs-6 fw-normal">/ {{ data['line'] }}</span></h4>
+              <h4 class="fw-bold text-dark mb-0" id="place">{{ data['position'] | int}} <span class="text-muted fs-6 fw-normal">/ {{ data['line'] }}</span></h4>
             {% else %}
-            <h4 class="fw-bold text-dark mb-0"> It's your turn !</h4>
+            <h4 class="fw-bold text-dark mb-0" id="place"> It's your turn !</h4>
             {% endif%}
           </div>
 
           <div class="col-4">
             <div class="d-flex align-items-center text-muted small mb-1">
               <i class="bi bi-clock me-1 text-primary"></i>
-              <span>Estimated wait time</span>
+              {% if data['status'] == 'serving' %}
+                <span id="est_word">Estimated serving time</span>
+              {% else %}
+                <span id="est_word">Estimated wait time</span>
+              {% endif %}
             </div>
             {% if data['waiting'] %}
-              <h4 class="fw-bold text-dark mb-0">~ {{ data['waiting'] | near}} <span class="fs-6 fw-normal">min</span></h4>
+              <h4 class="fw-bold text-dark mb-0" id="est_time">~ {{ data['waiting'] | near}} <span class="fs-6 fw-normal">min</span></h4>
+            {% elif data['status'] == 'serving' and data['serv_time'] %}
+              <h4 class="fw-bold text-dark mb-0" id="est_time">~ {{ data['serv_time'] | near}} <span class="fs-6 fw-normal">min</span></h4>
+            {% elif data['status'] == 'serving' %}
+              <h4 class="fw-bold text-dark mb-0" id="est_time"> Almost done </h4>
             {% else %}
-              <h4 class="fw-bold text-dark mb-0"> Soon </h4>
+              <h4 class="fw-bold text-dark mb-0" id="est_time"> Soon </h4>
             {% endif%}
           </div>
 
@@ -106,9 +114,9 @@
             <div>
               <span class="text-muted d-block" style="font-size: 0.75rem;">Average service time</span>
               {% if data['avg'] %}
-                <span class="fw-bold text-dark">{{ data['avg'] | near}} min</span>
+                <span class="fw-bold text-dark" id="avg">{{ data['avg'] | near}} min</span>
               {% else %}
-                <span class="fw-bold text-dark"> Calculating... </span>
+                <span class="fw-bold text-dark" id="avg"> Calculating... </span>
               {% endif%}
             </div>
           </div>
@@ -118,9 +126,9 @@
             <div>
               <span class="text-muted d-block" style="font-size: 0.75rem;">Average rating</span>
               {% if data['rating'] %}
-                <span class="fw-bold text-dark">{{ data['rating'] | near }} <span class="text-muted fw-normal">({{ data['reviews'] }})</span></span>
+                <span class="fw-bold text-dark" id="rate">{{ data['rating'] | near }} <span class="text-muted fw-normal">({{ data['reviews'] }})</span></span>
               {% else %}
-                <span class="fw-bold text-dark"> New </span>
+                <span class="fw-bold text-dark" id="rate"> New </span>
               {% endif%}
             </div>
           </div>
@@ -136,8 +144,8 @@
         </div>
 
         <!-- Action Button -->
-        <form action="/customer/leave-queue" method="POST" onsubmit="return confirm('Are you sure you want to leave this queue?');">
-          <input type="hidden" name="entry_id" value="{{ my_entry_id }}">
+        <form action="/customer/leaveQueue" method="POST" onsubmit="return confirm('Are you sure you want to leave this queue?');">
+          <input type="hidden" name="entry_id" value="{{ data['queueEntryId'] }}">
           <button type="submit" class="btn btn-outline-danger w-100 py-2 rounded-3 fw-semibold d-flex align-items-center justify-content-center">
             <i class="bi bi-box-arrow-right me-2"></i> Leave Queue
           </button>
@@ -146,3 +154,57 @@
       </div>
     </div>
 {% endblock %}
+{% block js %} 
+  <script>
+    initLivePolling('/customer/myQueue/data', (data) => {
+      if (data.status === 'done') {
+          window.location.href = `/customer/review/${data.queueEntryId}`;
+          return;
+      }
+      if (! data) {
+        return
+      }
+      const status = document.getElementById('status')
+      const place = document.getElementById('place')
+      const waiting_word = document.getElementById('est_word')
+      const waiting_time = document.getElementById('est_time')
+      const avg = document.getElementById('avg')
+      const rate = document.getElementById('rate')
+      // place
+      if (data.position) {
+        place.innerHTML = `${ Math.round(data['position'])} <span class="text-muted fs-6 fw-normal">/ ${ data['line'] }</span>`;
+      } else {
+        place.innerHTML = "It's your turn !";
+      }
+      // waiting_word & status
+      if (data['status'] === 'serving') {
+        status.innerHTML = `Serving`;
+        waiting_word.innerHTML = `Estimated serving time`;
+      } else if (data['status'] === 'waiting') {
+        status.innerHTML = `Waiting`;
+        waiting_word.innerHTML = `Estimated wait time`;
+      }
+      // waiting_time
+      if (data.waiting > 0) {
+        waiting_time.innerHTML = `~ ${ data['waiting'].toFixed(1)} <span class="fs-6 fw-normal">min</span>`
+      } else if (data['status'] === 'serving' && data['serv_time'] > 0) {
+        waiting_time.innerHTML = `~ ${ data['serv_time'].toFixed(1)} <span class="fs-6 fw-normal">min</span>`
+      } else {
+        waiting_time.innerHTML = `Soon`;
+      }
+      // avg
+      if (data.avg > 0) {
+        avg.innerHTML = `${data.avg.toFixed(1)} min`;
+      } else {
+        avg.innerHTML = 'Calculating...';
+      }
+      // rate
+      if (data.rating >= 1) {
+        rate.innerHTML = `${ data['rating'].toFixed(1) } <span class="text-muted fw-normal">(${ data['reviews'] })</span>`;
+      } else {
+        rate.innerHTML = 'New';
+      }
+
+    })
+  </script>
+{% endblock%}

@@ -149,6 +149,13 @@ if (searchArea && clearBtn) {
     window.location.href = `${window.location.pathname}?${pramams.toString()}`;
   });
 }
+// * filter in queues
+const serviceFilter = document.getElementById("serviceFilter");
+if (serviceFilter) 
+  serviceFilter.addEventListener('change', () => {
+    document.getElementById("fastestServiceInput").value = serviceFilter.value
+  })
+
 // * location
 
 function renderCities(selectedCountry) {
@@ -878,6 +885,16 @@ if (startQueue) {
 
     return timerId
   }
+// ! rate
+function updateRatingText(text) {
+  document.getElementById("mess").innerHTML = text;
+}
 
-
-
+// ! history
+  const time = document.getElementById("period");
+  const periodFrom = document.getElementById("periodFrom");
+  if (time) {
+    time.addEventListener('change', () => {
+      periodFrom.submit();
+    })
+  }

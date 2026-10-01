@@ -67,8 +67,8 @@
       {% endif %}
     </div>
 
-    <!-- Available Counters -->
     <div class="d-flex justify-content-between align-items-center mb-3">
+      
       <div class="d-flex align-items-center gap-2">
         <i class="bi bi-people-fill text-primary fs-4"></i>
         <div>
@@ -76,6 +76,25 @@
           <small class="text-muted">Choose a provider to join the queue</small>
         </div>
       </div>
+      <div class="input-group input-group-sm" style="width: auto;">
+        <label class="input-group-text bg-light text-muted border-end-0" for="serviceFilter">
+          <i class="bi bi-funnel"></i>
+        </label>
+        <select class="form-select form-select-sm border-start-0 ps-1" id="serviceFilter" onchange="filterByService(this.value)">
+          <option value="all" selected>All Services</option>
+          {% for s in services %}
+            <option value="{{ s.id }}">{{ s.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <form method="post" action="/customer/join-fastest" class="m-0">
+        <input type="hidden" name="company_id" value="{{ comp_data.id }}">
+        <input type="hidden" name="selected_service_id" id="fastestServiceInput" value="all">
+        <button type="submit" class="btn btn-sm btn-success d-inline-flex align-items-center gap-1">
+          <i class="bi bi-lightning-charge-fill"></i>
+          <span>Join Fastest</span>
+        </button>
+      </form>
       <div class="btn-group" role="group">
         <button type="button" class="btn btn-outline-primary btn-sm sort-btn active" data-sort="fastest">
           <i class="bi bi-lightning-fill me-1"></i> Fastest wait

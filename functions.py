@@ -201,3 +201,21 @@ def getCities(country) :
 
 def toMinutes(t) :
   return t.hour * 60 + t.minute
+
+def period_bounds(period):
+    if period == "today":
+        current = "AND date(start_time) = date('now')"
+        previous = "AND date(start_time) = date('now', '-1 day')"
+    elif period == "week":
+        current = "AND start_time >= datetime('now', '-7 days')"
+        previous = "AND start_time >= datetime('now', '-14 days') AND start_time < datetime('now', '-7 days')"
+    elif period == "month":
+        current = "AND start_time >= datetime('now', '-30 days')"
+        previous = "AND start_time >= datetime('now', '-60 days') AND start_time < datetime('now', '-30 days')"
+    elif period == "year":
+        current = "AND start_time >= datetime('now', '-365 days')"
+        previous = "AND start_time >= datetime('now', '-730 days') AND start_time < datetime('now', '-365 days')"
+    else:  # all
+        current = ""
+        previous = None
+    return current, previous

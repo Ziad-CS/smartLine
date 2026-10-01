@@ -178,9 +178,17 @@
       }
       // waiting_word & status
       if (data['status'] === 'serving') {
+        status.classList.remove('bg-warning-subtle')
+        status.classList.remove('text-warning')
+        status.classList.add('bg-success-subtle')
+        status.classList.add('text-success')
         status.innerHTML = `Serving`;
         waiting_word.innerHTML = `Estimated serving time`;
       } else if (data['status'] === 'waiting') {
+        status.classList.remove('bg-success-subtle')
+        status.classList.remove('text-success')
+        status.classList.add('bg-warning-subtle')
+        status.classList.add('text-warning')
         status.innerHTML = `Waiting`;
         waiting_word.innerHTML = `Estimated wait time`;
       }

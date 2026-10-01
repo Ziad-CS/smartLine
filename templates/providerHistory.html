@@ -1,0 +1,167 @@
+
+
+{% extends "layout.html" %}
+
+{% block title %}
+  Provider History
+{% endblock %}
+
+{% block main %}
+  {% if data.is_manager_view %}
+    <img src="https://ui-avatars.com/api/?name={{ data['provider']['name'] }}&background=0D6EFD&color=fff" alt="Avatar" class="rounded-circle" width="64">
+    <div>
+      <p> Name = {{  data['provider']['name'] }} </p>
+      <p> rate = {{ data['provider']['rating'] }} </p>
+      <p> reviews = {{ data['provider']['reviews'] }} </p>
+      <p> email = {{ data['provider']['email'] }} </p>
+      <p> joined = {{ data['provider']['joined'] }} </p>
+    </div>
+    <div>
+      <p>is active = {{data.live_data.status}} </p>
+      {% if data.live_data.serving_info %}
+        <div>
+          <p> name = {{ data.live_data.serving_info.name }} </p>
+          <p> type = {{ data.live_data.serving_info.type }} </p>
+          <p> started_ago = {{ data.live_data.serving_info.started_ago }} </p>
+        </div>
+      {% else %}
+      {% endif%}
+      {% if data.live_data.up_next %}
+        <div>
+          <p> UP NEXT</p>
+          {% for witing in data.live_data.up_next %}
+            <div>
+              <p> UP NEXT name = {{ witing.name }} </p>
+              <p> UP NEXT type = {{ witing.type }} </p>
+              <p> UP NEXT waitTime = {{ witing.waited_min | near }} </p>
+              <p> UP NEXT est = {{ witing.estimated_min | near }} </p>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+      {% endif%}
+    </div>
+    <div>
+      <form action="/providers/history/{{ data.provider.id }}" method="get" id="periodFrom">
+        <select name="period" id="period">
+          <option value="all" {% if not data.period or data.period == 'all' %} selected {% endif %}> All</option>
+          <option value="today" {% if data.period == 'today' %} selected {% endif %}> Today </option>
+          <option value="week" {% if data.period == 'week' %} selected {% endif %}> Week </option>
+          <option value="month" {% if data.period == 'month' %} selected {% endif %}> Month </option>
+          <option value="year" {% if data.period == 'year' %} selected {% endif %}> Year </option>
+        </select>
+      </form>
+      <div> Choosen = {{ data.period }}</div>
+
+      <p> total_served = {{ data.stats.total_served }} </p>
+      <span class="text-muted"> {{ data.stats.served_compare | near }} </span>
+      
+      <p> avg_service_time = {{ data.stats.avg_service_time }} </p>
+      <span class="text-muted"> {{ data.stats.avg_compare | near }} </span>
+
+      <p>avg_rating = {{ data.stats.avg_rating }} </p>
+      <span class="text-muted fs-6">reviews = {{ data.stats.reviews }} </span>
+      <span class="text-muted fs-5"> {{ data.stats.rateCompare | near }} </span>
+
+      <p> work_hours = {{ data.stats.work_hours }} </p>
+      <span class="text-muted"> {{ data.stats.workHoursCompare | near }} </span>
+
+    </div>
+    <div>
+      <div>1 : {{ data.rating_breakdown[0] }}</div>
+      <div>2 : {{ data.rating_breakdown[1] }}</div>
+      <div>3 : {{ data.rating_breakdown[2] }}</div>
+      <div>4 : {{ data.rating_breakdown[3] }}</div>
+      <div>5 : {{ data.rating_breakdown[4] }}</div>
+    </div>
+    <div>
+      {% for history in data.history %}
+        <div>
+          <p> customer_name : {{ history.customer_name }} </p>
+          <p> is_guest : {{ history.is_guest }} </p>
+          <p> datetime : {{ history.datetime }} </p>
+          <p> duration : {{ history.duration }} </p>
+          <p> stars : {{ history.stars }} </p>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <img src="https://ui-avatars.com/api/?name={{ data['provider']['name'] }}&background=0D6EFD&color=fff" alt="Avatar" class="rounded-circle" width="64">
+    <div>
+      <p> Name = {{  data['provider']['name'] }} </p>
+      <p> rate = {{ data['provider']['rating'] }} </p>
+      <p> reviews = {{ data['provider']['reviews'] }} </p>
+      <p> email = {{ data['provider']['email'] }} </p>
+      <p> joined = {{ data['provider']['joined'] }} </p>
+    </div>
+    <div>
+      <p>is active = {{data.live_data.status}} </p>
+      {% if data.live_data.serving_info %}
+        <div>
+          <p> name = {{ data.live_data.serving_info.name }} </p>
+          <p> type = {{ data.live_data.serving_info.type }} </p>
+          <p> started_ago = {{ data.live_data.serving_info.started_ago }} </p>
+        </div>
+      {% else %}
+      {% endif%}
+      {% if data.live_data.up_next %}
+        <div>
+          <p> UP NEXT</p>
+          {% for witing in data.live_data.up_next %}
+            <div>
+              <p> UP NEXT name = {{ witing.name }} </p>
+              <p> UP NEXT type = {{ witing.type }} </p>
+              <p> UP NEXT waitTime = {{ witing.waited_min | near }} </p>
+              <p> UP NEXT est = {{ witing.estimated_min | near }} </p>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+      {% endif%}
+    </div>
+    <div>
+      <form action="/providers/history/{{ prov_id }}" method="get" id="periodFrom">
+        <select name="period" id="period">
+          <option value="all" {% if not data.period or data.period == 'all' %} selected {% endif %}> All</option>
+          <option value="today" {% if data.period == 'today' %} selected {% endif %}> Today </option>
+          <option value="week" {% if data.period == 'week' %} selected {% endif %}> Week </option>
+          <option value="month" {% if data.period == 'month' %} selected {% endif %}> Month </option>
+          <option value="year" {% if data.period == 'year' %} selected {% endif %}> Year </option>
+        </select>
+      </form>
+      <div> Choosen = {{ data.period }}</div>
+
+      <p> total_served = {{ data.stats.total_served }} </p>
+      <span class="text-muted"> {{ data.stats.served_compare | near }} </span>
+      
+      <p> avg_service_time = {{ data.stats.avg_service_time }} </p>
+      <span class="text-muted"> {{ data.stats.avg_compare | near }} </span>
+
+      <p>avg_rating = {{ data.stats.avg_rating }} </p>
+      <span class="text-muted fs-6">reviews = {{ data.stats.reviews }} </span>
+      <span class="text-muted fs-5"> {{ data.stats.rateCompare | near }} </span>
+
+      <p> work_hours = {{ data.stats.work_hours }} </p>
+      <span class="text-muted"> {{ data.stats.workHoursCompare | near }} </span>
+
+    </div>
+    <div>
+      <div>1 : {{ data.rating_breakdown[0] }}</div>
+      <div>2 : {{ data.rating_breakdown[1] }}</div>
+      <div>3 : {{ data.rating_breakdown[2] }}</div>
+      <div>4 : {{ data.rating_breakdown[3] }}</div>
+      <div>5 : {{ data.rating_breakdown[4] }}</div>
+    </div>
+    <div>
+      {% for history in data.history %}
+        <div>
+          <p> customer_name : {{ history.customer_name }} </p>
+          <p> is_guest : {{ history.is_guest }} </p>
+          <p> datetime : {{ history.datetime }} </p>
+          <p> duration : {{ history.duration }} </p>
+          <p> stars : {{ history.stars }} </p>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif%}
+{% endblock %}

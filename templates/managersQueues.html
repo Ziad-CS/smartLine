@@ -1,0 +1,36 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Queues
+{% endblock %}
+
+{% block main %}
+  <div>
+    <h1> Queues </h1>
+    <p></p>
+  </div>
+  <div>
+    <div> {{ active }} of {{ prov_queues }} </div>
+    <div> waiting : {{ waiting }} </div>
+    <div> serving : {{ serving }} </div>
+    <div> ~ {{ total_avg_wait | near }} min</div>
+  </div>
+  <div>
+    <div></div>
+    <div></div>
+  </div>
+  <div>
+    {% for prov in data %}
+      <div>
+        {{ prov['prov_name'] }}
+        {{ prov['serving_name'] }}
+        {{ prov['ago'] | near}}
+        {{ prov['waiting'] }}
+        {{ prov['service'] }}
+        {{ prov['avg'] | near}}
+        {{ prov['start'] }}
+        {{ prov['status'] }}
+      </div>
+    {% endfor %}
+  </div>
+{% endblock %}

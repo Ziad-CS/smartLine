@@ -49,6 +49,9 @@ main
 .cap {
   text-transform: capitalize;
 }
+.pointer {
+  cursor: pointer;
+}
 .main-color {
   color: var(--main-color);
 }
@@ -410,6 +413,24 @@ color: #ff4d4f;
 /* ! provider start queue */
 .shake-error {
   animation: shake 0.3s ease-in-out;
+}
+/* ! review page */
+.star-rating input[type="radio"] {
+  display: none;
+}
+
+.star-rating label {
+  font-size: 2rem;
+  color: #dee2e6;
+  cursor: pointer;
+  padding: 0 4px;
+  transition: color 0.15s ease-in-out;
+}
+
+.star-rating input[type="radio"]:checked ~ label,
+.star-rating label:hover,
+.star-rating label:hover ~ label {
+  color: #ffc107;
 }
 
 @keyframes shake {

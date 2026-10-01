@@ -21,7 +21,7 @@
             <span class="stat-badge badge-up good" id="servedCompare">
               <i class="bi bi-arrow-up-short"></i> {{ servedCompare | near}}%
             </span>
-          {% elif not servedCompare or servedCompare | abs == 100 %}
+          {% elif (not servedCompare or servedCompare | abs == 100)  and not servedToDay%}
             <span class="stat-badge badge-up bg-warning-subtle" id="servedCompare">
               New shift
             </span>
@@ -211,7 +211,7 @@
         servedCompare.classList.remove('bg-warning-subtle')
         servedCompare.classList.remove('bad')
         servedCompare.innerHTML = `<i class="bi bi-arrow-up-short"></i> ${data.servedCompare.toFixed(1)}%`;
-      } else if (!data.servedCompare || Math.abs(data.servedCompare) === 100) {
+      } else if ((!data.servedCompare || Math.abs(data.servedCompare) === 100) && !data.servedToDay) {
         servedCompare.classList.add('bg-warning-subtle')
         servedCompare.classList.add('badge-up')
         servedCompare.classList.remove('badge-down')
@@ -224,7 +224,7 @@
         servedCompare.classList.remove('badge-up')
         servedCompare.classList.remove('good')
         servedCompare.classList.remove('bg-warning-subtle')
-        servedCompare.innerHTML = `<i class="bi bi-arrow-down-short"></i> ${data.servedCompare.toFixed(1)}%`;
+        servedCompare.innerHTML = `<i class="bi bi-arrow-down-short"></i> ${Math.abs(data.servedCompare.toFixed(1))}%`;
       }
 
 

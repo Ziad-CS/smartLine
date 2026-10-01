@@ -5,8 +5,9 @@ from flask_session import Session
 import requests
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from functions import apology, login_required, guest_ban, send_otp, calculate_change, limitFloat, estimation, clear_user_session, getCities, toMinutes, get_client_ip
+from functions import apology, login_required, guest_ban, send_otp, calculate_change, limitFloat, estimation, clear_user_session, getCities, toMinutes, get_client_ip, period_bounds
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 import random
 import string
 import smtplib
@@ -45,6 +46,7 @@ def inject_roles():
   user = db.execute("SELECT * FROM users WHERE id = ?", id)
   my_roles = []
   comp = ""
+  prov = -1
   manager = db.execute("SELECT * FROM managers WHERE user_id = ?", id)
   if len(manager) == 1 :
     my_roles.append("manager")
@@ -54,9 +56,10 @@ def inject_roles():
     my_roles.append("prov")
     if session["role"] == "prov" :
       comp = db.execute("SELECT companies.* FROM providers JOIN managers ON providers.manager_id = managers.id JOIN companies ON companies.manager_id = managers.id WHERE providers.user_id = ?", id)
+      prov = db.execute("SELECT * FROM providers WHERE user_id = ?", id)[0]['id']
   if comp :
-    return dict(my_roles=my_roles, comp=comp[0]["name"])
-  return dict(my_roles=my_roles, comp= "" )
+    return dict(my_roles=my_roles, comp=comp[0]["name"], prov_id=prov)
+  return dict(my_roles=my_roles, comp= "", prov_id=prov)
 
 @app.route("/")
 @login_required
@@ -464,6 +467,7 @@ def QueuesOfCompany(comp_id) :
   else :
     status = -1
   comp_data = {
+    'id' :  comp_id,
     'name' : company["name"],
     'cat' : company["category"],
     'address' : company["address"],
@@ -508,7 +512,7 @@ def QueuesOfCompany(comp_id) :
         customer_est = db.execute("SELECT * FROM service_logs WHERE end_time IS NOT NULL AND user_id = ? ORDER BY start_time DESC LIMIT 5", serving[0]["user_id"])
         serving_est = estimation(prov_log_limit, customer_est)
 
-    if started :
+    if serving :
       total_est_time = (serving_est - started) if serving_est - started > 0 else 0
     else :
       total_est_time = 0
@@ -517,8 +521,6 @@ def QueuesOfCompany(comp_id) :
       for user in line :
         user_log = db.execute("SELECT * FROM service_logs WHERE end_time IS NOT NULL AND user_id = ? ORDER BY start_time DESC LIMIT 5", user["user_id"])
         total_est_time += estimation(avg_prov_time, user_log)
-    else :
-      total_est_time = 0
 
     prov_log = db.execute("SELECT service_logs.* FROM service_logs WHERE end_time IS NOT NULL AND queue_id IN (SELECT id FROM queues WHERE provider_id = ?)", queue["provider_id"])
     if prov_log :
@@ -559,10 +561,10 @@ def QueuesOfCompany(comp_id) :
       'queue_id' : queue['id'],
       'break_time' : break_time
     })
+  services = db.execute("SELECT * FROM services WHERE company_id = ?", company['id'])
+  return render_template("QueuesOfCompany.html", comp_data=comp_data, queues_data=queues_data, lowest_time_queue_id=lowest_time_queue_id, services=services)
 
-  return render_template("QueuesOfCompany.html", comp_data=comp_data, queues_data=queues_data, lowest_time_queue_id=lowest_time_queue_id)
-
-@app.route("/customer/join/<queue_id>", methods=["POST"])
+@app.route("/customer/join/<queue_id>", methods=["GET", "POST"])
 @login_required
 def join(queue_id) :
   postion = db.execute("SELECT * FROM queue_entries WHERE queue_id = ? ORDER BY position DESC LIMIT 1", queue_id)
@@ -593,6 +595,88 @@ def join(queue_id) :
       return redirect("/customer/myQueue")
 
   return redirect("/customer/myQueue")
+
+@app.route("/customer/join-fastest", methods=["POST"])
+@login_required
+def fastestQueue() :
+  comp_id =  request.form.get('company_id')
+  serv_id =  request.form.get('selected_service_id')
+
+  if not comp_id :
+    flash("Invalid request parameters.", category="no")
+    return redirect("/customer/findQueue")
+  if not serv_id :
+    flash("Invalid request parameters.", category="no")
+    return redirect("/customer/findQueue")
+  if serv_id == 'all' :
+     queues = db.execute("""SELECT queues.* FROM queues
+                          JOIN providers ON providers.id = queues.provider_id 
+                          JOIN managers ON managers.id = providers.manager_id 
+                          JOIN companies ON companies.manager_id = managers.id 
+                         WHERE companies.id = ? AND queues.closed_at IS NULL""", comp_id)
+  else :
+    queues = db.execute("SELECT * FROM queues WHERE service_id = ? AND closed_at IS NULL", serv_id)
+  if not queues :
+    flash("No active queues found for this service.", category="no")
+    return redirect(f"/customer/company/{comp_id}")
+  
+  lowest_time_queue_id = -1
+  lowest_time = float('inf')
+  started = 0
+  serving_est = 0
+  for q in queues :
+    started = 0
+    serving_est = 0
+    
+    # prov = db.execute("SELECT * FROM providers WHERE providers.id = ?", q["provider_id"])[0]
+    prov_log_limit = db.execute("""
+                                SELECT service_logs.* FROM service_logs 
+                                WHERE end_time IS NOT NULL AND queue_id IN (SELECT id FROM queues WHERE provider_id = ?) 
+                                ORDER BY start_time DESC LIMIT 100""",
+                                q["provider_id"])
+    line = db.execute("SELECT * FROM queue_entries WHERE queue_id = ? AND status = 'waiting'", q["id"])
+    serving = db.execute("SELECT * FROM queue_entries WHERE status = 'serving' AND queue_id = ?", q["id"])
+    nowServingLog = db.execute("SELECT * FROM service_logs WHERE queue_id = ? AND end_time IS NULL ORDER BY start_time DESC LIMIT 1", q["id"])
+    if nowServingLog:
+      started = (datetime.now() - datetime.strptime(nowServingLog[0]["start_time"], "%Y-%m-%d %H:%M:%S")).total_seconds() / 60
+
+    if serving :
+      if serving[0]["user_id"] :
+        customer_est = db.execute("SELECT * FROM service_logs WHERE end_time IS NOT NULL AND user_id = ? ORDER BY start_time DESC LIMIT 5", serving[0]["user_id"])
+        serving_est = estimation(prov_log_limit, customer_est)
+      else :
+        serving_est = estimation(prov_log_limit)
+
+    if serving :
+      total_est_time = (serving_est - started) if serving_est - started > 0 else 0
+    else :
+      total_est_time = 0
+
+    avg_prov_time = estimation(prov_log_limit)
+    if avg_prov_time : 
+      for user in line :
+        if user["user_id"] :
+          user_log = db.execute("SELECT * FROM service_logs WHERE end_time IS NOT NULL AND user_id = ? ORDER BY start_time DESC LIMIT 5", user["user_id"])
+          total_est_time += estimation(avg_prov_time, user_log)
+        else :
+          total_est_time += avg_prov_time
+
+    if lowest_time > total_est_time :
+      if db.execute("SELECT * FROM queue_entries WHERE status = 'waiting' AND queue_id = ?", q["id"]) :
+        break_test = db.execute("SELECT * FROM service_logs WHERE queue_id = ? ORDER BY end_time DESC  LIMIT 1", q["id"])
+        if break_test :
+          break_time = (datetime.now() - datetime.strptime(break_test[0]["end_time"] , "%Y-%m-%d %H:%M:%S")).total_seconds() / 60
+        else :
+          break_time = 0
+      else :
+        break_time = 0
+      if break_time < 3 or lowest_time == float('inf'):
+        lowest_time = total_est_time
+        lowest_time_queue_id = q['id']
+  if lowest_time_queue_id == -1 :
+    flash("Could not determine the fastest queue at this moment.", category="no")
+    return redirect("/customer/findQueue")
+  return redirect(f"/customer/join/{str(lowest_time_queue_id)}")
 
 
 @app.route("/customer/myQueue")
@@ -866,7 +950,7 @@ def leaveQueue() :
 @app.route("/customer/review/<queueEntryId>", methods=['GET','POST'])
 @login_required
 def review(queueEntryId) :
-  user = db.execute("SELECT * FROM users WHERE id", session['user_id'])
+  user = db.execute("SELECT * FROM users WHERE id = ?", session['user_id'])
   if user :
     log = db.execute("SELECT * FROM service_logs WHERE queue_entry_id = ? AND user_id = ?", queueEntryId, user[0]['id'])
   else :
@@ -877,10 +961,17 @@ def review(queueEntryId) :
     return redirect("/")
   
   if request.method == 'POST' :
-    stars = None
-
-    if stars and stars >= 1 and stars <= 5 :
-      db.execute("UPDATE service_logs SET stars = ? WHERE queue_entry_id = ? AND user_id = ?", stars, queueEntryId, user[0]['id'])
+    stars = request.form.get("stars", 0)
+    if stars and int(stars) >= 1 and int(stars) <= 5 :
+      if user :
+        db.execute("UPDATE service_logs SET stars = ? WHERE queue_entry_id = ? AND user_id = ?", stars, queueEntryId, user[0]['id'])
+      else :
+        db.execute("UPDATE service_logs SET stars = ? WHERE queue_entry_id = ? AND user_id = ?", stars, queueEntryId, ip)
+    else :
+      flash("Please select a rating between 1 and 5.", category="no")
+      return redirect(f"/customer/review/{str(queueEntryId)}")
+    flash("Thank you for your feedback!", category="yes")
+    return redirect("/")
   else :
     queue = db.execute("SELECT * FROM queues WHERE id = ?", log[0]["queue_id"])
     prov = db.execute("SELECT * FROM providers WHERE id = ?", queue[0]["provider_id"])
@@ -889,6 +980,7 @@ def review(queueEntryId) :
     company = db.execute("SELECT * FROM companies WHERE manager_id = ?", manager[0]["id"])
     services = db.execute("SELECT * FROM services WHERE id = ?", queue[0]["service_id"])
     time = ( datetime.strptime( log[0]['end_time'], "%Y-%m-%d %H:%M:%S") - datetime.strptime( log[0]['start_time'], "%Y-%m-%d %H:%M:%S") ).total_seconds() / 60
+
     data = {
     'cat': company[0]['category'],
     'service': services[0]['name'],
@@ -897,15 +989,15 @@ def review(queueEntryId) :
     'serv_time' : time,
     'queueEntryId' : queueEntryId
     }
-    print(queueEntryId)
-    return apology('review', 404)
+
     return render_template("review.html", data=data)
 
 
-@app.route("/customer/history")
+@app.route("/customer/history/<user_id>", methods=['GET'])
 @login_required
-def CustomerHistory() :
-
+@guest_ban
+def customerHistory(user_id) :
+  
   return render_template("customerHistory.html")
 
 
@@ -989,7 +1081,7 @@ def providerQueue() :
 
       started = 0
 
-    dt_object = datetime.strptime(serving[0]["joined_at"], "%Y-%m-%d %H:%M:%S")
+    dt_object = datetime.strptime(serving[0]["joined_at"], "%Y-%m-%d %H:%M:%S").replace(tzinfo=ZoneInfo("UTC")).astimezone(ZoneInfo("Africa/Cairo"))
     joined = dt_object.strftime("%-I:%M %p")
   else :
     started = 0
@@ -1366,6 +1458,213 @@ def end_shift(prov_id):
     return redirect("/")
 
 
+@app.route("/providers/history/<prov_id>", methods=['GET'])
+@login_required
+@guest_ban
+def provHistory(prov_id) :
+  prov = db.execute("SELECT * FROM providers WHERE id = ?", prov_id)
+  if not prov:
+      flash("Provider not found.", category="no")
+      return redirect("/")
+  prov = prov[0]
+
+  # * تحقق الصلاحية: إما الـ Provider نفسه، أو المدير بتاعه
+  is_self = (session.get("role") == "prov" and prov["user_id"] == session["user_id"])
+  is_owner_manager = False
+  if session.get("role") == "manager":
+      manager = db.execute("SELECT * FROM managers WHERE user_id = ?", session["user_id"])
+      if manager and prov["manager_id"] == manager[0]["id"]:
+          is_owner_manager = True
+
+  if not (is_self or is_owner_manager):
+      flash("Unauthorized access", category="no")
+      return redirect("/")
+
+  prov_info = db.execute("SELECT * FROM users WHERE id = ?", prov["user_id"])[0]
+
+  # ! --- Live Queue data
+  live_data = None
+  if is_owner_manager:
+      nowQueue = db.execute(
+          "SELECT * FROM queues WHERE provider_id = ? AND (status = 'active' OR (status = 'closed' AND closed_at IS NULL))",
+          prov["id"]
+      )
+      if nowQueue:
+          nowQueue = nowQueue[0]
+          serving = db.execute("SELECT * FROM queue_entries WHERE status = 'serving' AND queue_id = ?", nowQueue["id"])
+          waiting = db.execute("SELECT * FROM queue_entries WHERE status = 'waiting' AND queue_id = ? ORDER BY position ASC", nowQueue["id"])
+
+          serving_info = None
+          if serving:
+              serviceData = db.execute("SELECT * FROM service_logs WHERE queue_entry_id = ? AND end_time IS NULL", serving[0]["id"])
+              started = 0
+              if serviceData:
+                  started = (datetime.now() - datetime.strptime(serviceData[0]["start_time"], "%Y-%m-%d %H:%M:%S")).total_seconds() / 60
+              serving_info = {
+                  "name": serving[0]["user_name"],
+                  "type": "Registered" if serving[0]["user_id"] else "Guest",
+                  "started_ago": round(started, 1)
+              }
+
+          prov_est = db.execute(
+              "SELECT * FROM service_logs WHERE end_time IS NOT NULL AND queue_id IN (SELECT id FROM queues WHERE provider_id = ?) ORDER BY start_time DESC LIMIT 100",
+              prov["id"]
+          )
+          avg_prov_time = estimation(prov_est)
+
+          up_next = []
+          running_total = 0
+          for w in waiting:
+              user_type = "Registered" if w["user_id"] else "Guest"
+              joined_ago = (datetime.now() - datetime.strptime(w["joined_at"], "%Y-%m-%d %H:%M:%S")).total_seconds() / 60
+              customer_est = []
+              if w["user_id"]:
+                  customer_est = db.execute(
+                      "SELECT * FROM service_logs WHERE end_time IS NOT NULL AND user_id = ? ORDER BY start_time DESC LIMIT 5",
+                      w["user_id"]
+                  )
+              running_total += estimation(avg_prov_time, customer_est) if avg_prov_time else 0
+              up_next.append({
+                  "name": w["user_name"],
+                  "type": user_type,
+                  "waited_min": round(joined_ago, 1),
+                  "estimated_min": round(running_total, 1)
+              })
+
+          live_data = {
+              "status": nowQueue["status"],
+              "serving": serving_info,
+              "waiting_count": len(waiting),
+              "up_next": up_next
+          }
+
+  # ! --- Performance stats (مشترك بين الاتنين) ---
+  period = request.args.get("period", "today")  # today / week / month / year / all
+  current_filter, previous_filter = period_bounds(period)
+
+  all_logs = db.execute(
+      f"""SELECT service_logs.* FROM service_logs
+          JOIN queues ON queues.id = service_logs.queue_id
+          WHERE queues.provider_id = ? AND end_time IS NOT NULL {current_filter}
+          ORDER BY start_time DESC""",
+      prov["id"]
+  )
+
+  total_served = len(all_logs)
+  avg_service_time = estimation(all_logs)
+
+  rated_logs = [log for log in all_logs if log["stars"] is not None]
+  reviews = len(rated_logs)
+  rate = (sum(int(log["stars"]) for log in rated_logs) / reviews) if reviews else 0
+
+  work_hours = 0
+  for log in all_logs:
+    try:
+        start = datetime.strptime(str(log["start_time"]).split('.')[0], "%Y-%m-%d %H:%M:%S")
+        end = datetime.strptime(str(log["end_time"]).split('.')[0], "%Y-%m-%d %H:%M:%S")
+        duration = (end - start).total_seconds()
+    except Exception:
+        continue
+    work_hours += duration
+
+  servedCompare = None
+  avgCompare = None
+  rateCompare = None
+  workHoursCompare = None
+  if previous_filter is not None:
+    prev_logs = db.execute(
+      f"""SELECT service_logs.* FROM service_logs
+        JOIN queues ON queues.id = service_logs.queue_id
+        WHERE queues.provider_id = ? AND end_time IS NOT NULL {previous_filter}""",
+      prov["id"]
+    )
+    prev_avg_time = estimation(prev_logs)
+    servedCompare = calculate_change(total_served, len(prev_logs))
+    avgCompare = calculate_change(avg_service_time, prev_avg_time)
+    prev_rated_logs = [log for log in prev_logs if log["stars"] is not None]
+    prev_reviews = len(prev_rated_logs)
+    prev_rate = (sum(int(log["stars"]) for log in prev_rated_logs) / prev_reviews) if prev_reviews else 0
+    rateCompare = calculate_change( rate, prev_rate)
+
+    provious_week_seconds = 0
+    for log in prev_logs:
+      try:
+          start = datetime.strptime(str(log["start_time"]).split('.')[0], "%Y-%m-%d %H:%M:%S")
+          end = datetime.strptime(str(log["end_time"]).split('.')[0], "%Y-%m-%d %H:%M:%S")
+          duration = (end - start).total_seconds()
+      except Exception:
+        continue
+      provious_week_seconds += duration
+    
+    workHoursCompare = calculate_change( work_hours, provious_week_seconds)
+  
+  without_filter_logs = db.execute(
+    f"""SELECT service_logs.* FROM service_logs
+      JOIN queues ON queues.id = service_logs.queue_id
+      WHERE queues.provider_id = ? AND end_time IS NOT NULL
+      ORDER BY start_time DESC""",
+    prov["id"]
+  )
+  without_filter_rated = [log for log in without_filter_logs if log["stars"] is not None]
+  all_reviews = len(without_filter_rated)
+  all_rate = (sum(int(log["stars"]) for log in without_filter_rated) / all_reviews) if all_reviews else 0
+  rating_breakdown = [0, 0, 0, 0, 0]
+  for log in without_filter_rated:
+      rating_breakdown[int(log["stars"]) - 1] += 1
+
+  recent_rated = without_filter_rated[:10]
+  recent_warning = None
+  if recent_rated and reviews >= 10:
+      recent_avg = sum(int(log["stars"]) for log in recent_rated) / len(recent_rated)
+      if recent_avg < rate - 0.4:
+          recent_warning = f"The last {len(recent_rated)} reviews average {round(recent_avg, 1)} vs {round(rate, 1)} overall."
+
+  history = []
+  for log in all_logs: 
+    duration = None
+    if log["end_time"]:
+      duration = round(
+          (datetime.strptime(log["end_time"], "%Y-%m-%d %H:%M:%S") -
+            datetime.strptime(log["start_time"], "%Y-%m-%d %H:%M:%S")).total_seconds() / 60, 1
+      )
+      history.append({
+          "customer_name": log["user_name"],
+          "is_guest": log["user_id"] is None,
+          "datetime": log["start_time"],
+          "duration": duration,
+          "stars": log["stars"]
+      })
+
+  data = {
+      "provider": {
+          'id': prov_info['id'],
+          "name": prov_info["name"],
+          "email": prov_info["email"],
+          "rating": round(all_rate, 1),
+          "reviews": all_reviews,
+          "joined": datetime.strftime(datetime.strptime(prov_info['created_at'], "%Y-%m-%d %H:%M:%S"), "%d %B, %Y")
+      },
+      "is_manager_view": is_owner_manager,
+      "live_data": live_data,
+      "stats": {
+          "total_served": total_served,
+          "avg_service_time": round(avg_service_time, 1) if avg_service_time else 0,
+          "avg_rating": round(rate, 1),
+          "reviews": reviews,
+          "work_hours": round(work_hours / 3600, 1),
+          "served_compare": servedCompare,
+          "avg_compare": avgCompare,
+          "rateCompare": rateCompare,
+          "workHoursCompare": workHoursCompare,
+      },
+      "rating_breakdown": rating_breakdown,
+      "recent_warning": recent_warning,
+      "history": history,
+      "period": period
+  }
+
+  return render_template("providerHistory.html", data=data)
+
 # * For Manager Role
 
 @app.route("/manager/providers", methods=["GET", "POST"])
@@ -1654,12 +1953,70 @@ def removeServices(serv_id) :
   return jsonify({"success" : True});
 
 
-@app.route ("/manager/queues", methods=["POST"])
+@app.route ("/manager/queues", methods=["GET", "POST"])
 @login_required
 @guest_ban
 def managerQueues() :
+  if session["role"] != "manager" :
+    flash("Unauthorized access", category="no")
+    return redirect("/")
+  manager = db.execute("SELECT * FROM managers WHERE user_id = ?", session["user_id"])
+  if not manager:
+    flash("Unauthorized access", category="no")
+    return redirect("/")
 
-  return render_template("")
+  queues = db.execute("SELECT queues.* FROM queues JOIN providers ON providers.id = queues.provider_id JOIN managers ON managers.id = providers.manager_id WHERE queues.closed_at IS NULL AND managers.id = ?", manager[0]["id"])
+  all_Waiting = db.execute("""
+                      SELECT * FROM queue_entries
+                      WHERE queue_id IN (SELECT queues.id FROM queues WHERE provider_id IN (SELECT id FROM providers WHERE manager_id = ?)) 
+                      AND status = 'waiting'
+                       """, manager[0]['id'])
+  all_serving = db.execute("""SELECT * FROM queue_entries 
+                        WHERE queue_id IN (SELECT queues.id FROM queues WHERE provider_id IN (SELECT id FROM providers WHERE manager_id = ?)) 
+                        AND status = 'serving'""", manager[0]['id'])
+  nowQueues = db.execute("SELECT queues.* FROM queues WHERE queues.provider_id IN (SELECT id FROM providers WHERE manager_id = ?) AND closed_at IS NULL ", manager[0]["id"])
+  total_avg_wait = 0
+  inShift = 0
+  prov_data = []
+  for queue in nowQueues :
+    serv_data = db.execute("SELECT * FROM service_logs WHERE end_time IS NOT NULL AND queue_id = ?", queue['id'])
+    waiting = db.execute("SELECT * FROM queue_entries WHERE queue_id = ? AND status = 'waiting'", queue["id"])
+    serving = db.execute("SELECT * FROM queue_entries WHERE queue_id = ? AND status = 'serving'", queue["id"])
+    service_type = db.execute("SELECT * FROM services WHERE id = ?", queue['service_id'])
+    prov = db.execute("SELECT users.* FROM users JOIN providers ON providers.user_id = users.id WHERE providers.id = ?", queue["provider_id"])[0]
+
+    prov_est = estimation(serv_data)
+    if prov_est :
+      total_avg_wait += prov_est
+      inShift += 1
+
+    if service_type :
+      name = service_type[0]['name']
+    else :
+      name = 'General Service'
+
+    if serving :
+      serv_name = serving[0]['user_name']
+      serv_ago = (datetime.now() - datetime.strptime(serving[0]['joined_at'], "%Y-%m-%d %H:%M:%S")).total_seconds() / 60
+    else :
+      serv_name = ''
+      serv_ago = 0
+    start = datetime.strftime( datetime.strptime(queue['created_at'], "%Y-%m-%d %H:%M:%S").replace(tzinfo=ZoneInfo("UTC")).astimezone(ZoneInfo("Africa/Cairo")) , "%H:%M")
+    prov_data.append({
+      "prov_name" : prov['name'],
+      "service" : name,
+      "ago" : int(serv_ago),
+      "waiting" : len(waiting),
+      "serving_name" : serv_name,
+      "avg" : prov_est,
+      "start" : start,
+      "status" : queue['status']
+    })
+  if inShift :
+    total_avg_wait /= inShift
+  return render_template("managersQueues.html", 
+                        active=len(nowQueues), prov_queues=len(queues), waiting=len(all_Waiting),
+                        serving=len(all_serving), total_avg_wait=total_avg_wait, data=prov_data)
 
 
 @app.route ("/manager/providerDetails/<prov_id>", methods=["POST"])

@@ -28,11 +28,13 @@ CREATE TABLE managers (
 CREATE TABLE queues (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     provider_id INTEGER NOT NULL,
+    company_id INTEGER NOT NULL,
     status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'closed')),
     service_id INTEGER REFERENCES services(id),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     closed_at TIMESTAMP,
-    FOREIGN KEY (provider_id) REFERENCES providers(id)
+    FOREIGN KEY (provider_id) REFERENCES providers(id),
+    FOREIGN KEY (company_id) REFERENCES companies(id)
 );
 CREATE TABLE queue_entries (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -40,7 +42,7 @@ CREATE TABLE queue_entries (
     user_id INTEGER,
     user_name TEXT NOT NULL,
     position INTEGER NOT NULL,
-    status TEXT NOT NULL DEFAULT 'waiting' CHECK (status IN ('waiting', 'serving', 'done')),
+    status TEXT NOT NULL DEFAULT 'waiting' CHECK (status IN ('waiting', 'serving', 'done', 'canceled', 'didnt_come')),
     joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     ip_address TEXT,
     FOREIGN KEY (queue_id) REFERENCES queues(id),

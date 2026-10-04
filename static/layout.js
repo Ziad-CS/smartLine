@@ -90,6 +90,15 @@ if (rEmail && rName && rPass && rConfirmation) {
 }
 
 // * category in find queue
+const urlParams = new URLSearchParams(window.location.search);
+const currentPeriod = urlParams.get("category") || "all";
+document.querySelectorAll(".category_btn").forEach(btn => {
+  if (btn.dataset.cat === currentPeriod) {
+    btn.classList.add("active");
+  } else {
+    btn.classList.remove("active");
+  }
+});
 
 document.querySelectorAll(".category_btn").forEach(btn => {
   btn.addEventListener("click", function() {
@@ -193,14 +202,14 @@ function renderCities(selectedCountry) {
                 cityList.addOption({ value: city.toLowerCase(), text: city });
               });
               cityList.refreshOptions(false);
-              if (country.input.dataset.myCountry != selectedCountry) {
+              if (
+                country.input.dataset.myCountry.toLowerCase() != selectedCountry.toLowerCase()
+              ) {
                 keys = Object.keys(cityList.options);
                 rnd = Math.floor(Math.random() * (keys.length - 2)) + 1;
-                if (keys[rnd])
-                  cityList.setValue(keys[rnd]);
+                if (keys[rnd]) cityList.setValue(keys[rnd]);
                 cityList.refreshOptions(false);
-              }
-              else {
+              } else {
                 cityList.setValue(cityList.input.dataset.myCity);
                 cityList.refreshOptions(false);
               }

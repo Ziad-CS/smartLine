@@ -5,5 +5,64 @@
 {% endblock %}
 
 {% block main %}
-    
+  <div>
+    <i></i>
+    <div>
+      <h1> MY History </h1>
+      <p></p>
+    </div>
+    <div>
+      <p class="text-muted"> {{ data.total_completed }}service completed </p>
+      <span> . </span>
+      <p class="text-muted"> {{ data.companies_count }} companies </p>
+    </div>
+  </div>
+
+  <div>
+    <form action="" id="search">
+      <div class="input-container">
+        <input type="text" name="q" placeholder="Search by company, description, Area or service..." id="searchArea"> 
+        <span id="clearBtn" class="clear-icon">&times;</span>
+      </div>
+      <button type="submit"> Search </button>
+    </form>
+    <div>
+      <button type="button" class="category_btn active" data-cat="all"> All </button>
+      <button type="button" class="category_btn" data-cat="today"> Today </button>
+      <button type="button" class="category_btn" data-cat="week"> Week </button>
+      <button type="button" class="category_btn" data-cat="month"> Month </button>
+      <button type="button" class="category_btn" data-cat="year"> Year </button>
+    </div>
+  </div>
+  <div>
+    {% for item in data['items'] %}
+      <div style="height: 150px; width: 300px;">
+        <div class="service-icon rounded-circle bg-primary bg-opacity-10 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 48px; height: 48px;">
+          {% if 'clinic' in item['company_category']|lower or 'health' in item['company_category']|lower %}
+            <i class="bi bi-heart-pulse text-primary fs-5"></i>
+          {% elif 'bank' in item['company_category']|lower or 'finance' in item['company_category']|lower %}
+            <i class="bi bi-bank text-primary fs-5"></i>
+          {% elif 'government' in item['company_category']|lower %}
+            <i class="bi bi-file-earmark-text text-primary fs-5"></i>
+          {% elif 'telecom' in item['company_category']|lower %}
+            <i class="bi bi-broadcast text-primary fs-5"></i>
+          {% elif 'edu' in item['company_category']|lower %}
+            <i class="bi bi-mortarboard text-primary fs-5"></i>
+          {% else %}
+            <i class="bi bi-building text-primary fs-5"></i>
+          {% endif %}
+          
+          <h2> {{ item.company_name }} </h2>
+          <p class="text-muted"> {{ item.service_name }} </p>
+          <p class="text-muted"> Served by  </p>
+        </div>
+        <div>
+          <span> {{ item.date }} </span>
+          <span> {{ item.duration }} </span>
+          <span> {{ item.stars }} </span>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+
 {% endblock %}

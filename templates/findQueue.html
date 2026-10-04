@@ -46,7 +46,7 @@
               <div class="modal-body">
                 <div class="mb-3">
                   <label for="countryList" class="form-label small fw-semibold text-secondary mb-1">Country</label>
-                  <select id="countryList" name="country" placeholder="Search country..." class="form-select form-select-lg custom-input" data-my-country="{{ session.get('country') }}" >
+                  <select id="countryList" name="country" placeholder="Search country..." class="form-select form-select-lg custom-input" data-my-country="{{ session.get('country') |lower}}" >
                     {% for country in countries %}
                       <option value="{{ country['name'] |lower }}" {% if session.get('country') |lower == country['name'] |lower %} selected {% endif %}>
                         {{ country["name"]}} 
@@ -56,7 +56,7 @@
                 </div>
                 <div class="mb-3">
                   <label for="citiesList" class="form-label small fw-semibold text-secondary mb-1">City</label>
-                  <select id="citiesList" name="city" placeholder="Search city..." class="form-select form-select-lg custom-input" data-my-city="{{ session.get('city') }}">
+                  <select id="citiesList" name="city" placeholder="Search city..." class="form-select form-select-lg custom-input" data-my-city="{{ session.get('city') |lower}}">
                     {% for city in cities %}
                       <option value="{{ city|lower }}" {% if session.get('city')|lower == city|lower %}selected{% endif %}>
                         {{ city}}

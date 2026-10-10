@@ -5,53 +5,214 @@
 {% endblock %}
 
 {% block main %}
-  <div>
-    <h1 class="visually-hidden"> Providers </h1>
+<div class="container-fluid py-4 px-3 px-lg-4">
 
-    <section class="card mb-4">
-    <div class="card-body">
-      <h2>Add & Link Provider</h2>
-      <p> Lorem ipsum dolor sit amet consectetur adipisicing elit. Enim maiores </p>
+  <!-- Header -->
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+    <div>
+      <h1 class="h2 fw-bold mb-2" style="color: var(--main-color)">
+        Providers
+      </h1>
+      <p class="text-secondary mb-0">
+        Manage your team and monitor provider availability.
+      </p>
+    </div>
+
+    <div class="d-flex align-items-center gap-3 bg-white border rounded-3 p-3">
+      <i class="bi bi-people fs-3" style="color: var(--main-color)"></i>
+      <div>
+        <small class="text-secondary d-block">Your Team</small>
+        <span class="fs-4 fw-bold" style="color: var(--main-color)">
+          {{ providers|length }}
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Link Provider -->
+  <section class="card border-0 shadow-sm rounded-4 mb-4">
+    <div class="card-body p-3 p-md-4">
+      <div class="d-flex align-items-center gap-3 mb-3">
+        <div class="rounded-3 p-3 bg-light">
+          <i class="bi bi-person-plus fs-4" style="color: var(--main-color)"></i>
+        </div>
+        <div>
+          <h2 class="h5 fw-bold mb-1">Connect a Provider</h2>
+          <p class="text-secondary small mb-0">
+            Enter the provider's unique invite code to link them to your company.
+          </p>
+        </div>
+      </div>
+
       <form action="/manager/providers" method="post">
-        <input type="text" autocomplete="off" placeholder="Provider Invite Code" maxlength="8" name="invite" required>
-        <button type="submit"> Link Provider </button>
+        <div class="row g-2">
+          <div class="col-12 col-md">
+            <div class="input-group">
+              <span class="input-group-text bg-light">
+                <i class="bi bi-key"></i>
+              </span>
+              <input
+                type="text"
+                class="form-control"
+                name="invite"
+                placeholder="Enter 8-character invite code"
+                maxlength="8"
+                autocomplete="off"
+                required
+                aria-label="Provider invite code"
+              >
+            </div>
+          </div>
+          <div class="col-12 col-md-auto">
+            <button type="submit" class="btn btn-primary w-100">
+              <i class="bi bi-link-45deg me-1"></i>
+              Link Provider
+            </button>
+          </div>
+        </div>
       </form>
     </div>
   </section>
-  <ul>
-    {% for provider in providers %}
-    <li>
-      <img src="https://ui-avatars.com/api/?name={{ provider['user_name'] }}&background=0D6EFD&color=fff" alt="Avatar" class="rounded-circle" width="64">
-      <div>
-        <div>
-          <h2> {{ provider["user_name"] }} </h2>
-          <p> {{ provider["email"] }} </p>
-        </div>
-        <div>
-          <a href="/providers/history/{{ provider['id'] }}"> Details</a>
-          
-            <span> Status: </span>
-            {% if provider["status"] == 'active' %}
-              <a href="/provider/Queue/endshift/{{provider['id']}}">
-                <span class="badge bg-success text-white">Active</span>
-              </a>
-              <span class="badge bg-light text-primary border">
-                <i class="bi bi-tag me-1"></i> {{ provider.serv_name }} 
-              </span>
-            {% else %}
-              <a href="/provider/Queue/endshift/{{provider['id']}}">
-                <span class="badge bg-secondary text-white">Closed/Offline</span>
-              </a>
-              <span class="badge bg-light text-danger border">
-                -- No Active Service --
-              </span>
-            {% endif%}
-          </a>
-          <a href="/manager/providers/revoke/{{ provider['id'] }}"> Revoke</a>
-        </div>
-      </div>
-    </li>
-    {% endfor %}
-  </ul>
+
+  <!-- Providers Heading -->
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <div>
+      <h2 class="h5 fw-bold mb-1">Your Providers</h2>
+      <p class="text-secondary small mb-0">
+        Overview of your linked team members.
+      </p>
+    </div>
+    <span class="badge rounded-pill bg-light text-dark border px-3 py-2">
+      <i class="bi bi-people me-1"></i>
+      {{ providers|length }} provider{% if providers|length != 1 %}s{% endif %}
+    </span>
   </div>
+
+  <!-- Providers List -->
+  {% if providers %}
+    <div class="row g-3">
+      {% for provider in providers %}
+        <div class="col-12 col-xl-6">
+          <article class="card h-100 border-0 shadow-sm rounded-4">
+            <div class="card-body p-3 p-md-4">
+
+              <!-- Provider Info -->
+              <div class="d-flex align-items-center gap-3 mb-3">
+                <img
+                  src="https://ui-avatars.com/api/?name={{ provider['user_name']|urlencode }}&background=0c206d&color=fff&size=128"
+                  alt="{{ provider['user_name'] }} avatar"
+                  class="rounded-circle flex-shrink-0 border"
+                  width="56"
+                  height="56"
+                  loading="lazy"
+                >
+
+                <div class="flex-grow-1 min-w-0">
+                  <h3 class="h6 fw-bold mb-1 text-break">
+                    {{ provider["user_name"] }}
+                  </h3>
+                  <p class="small text-secondary mb-0 text-break">
+                    {{ provider["email"] }}
+                  </p>
+                </div>
+
+                {% if provider["status"] == 'active' %}
+                  <span class="badge rounded-pill bg-success-subtle text-success border border-success-subtle">
+                    <i class="bi bi-circle-fill me-1" style="font-size: 7px"></i>
+                    Active
+                  </span>
+                {% else %}
+                  <span class="badge rounded-pill bg-secondary-subtle text-secondary border">
+                    <i class="bi bi-circle-fill me-1" style="font-size: 7px"></i>
+                    Offline
+                  </span>
+                {% endif %}
+              </div>
+
+              <hr class="text-secondary opacity-25">
+
+              <!-- Service -->
+              <div class="d-flex align-items-center gap-3 mb-4">
+                <div class="rounded-3 bg-light p-3">
+                  <i class="bi bi-ticket-perforated fs-5" style="color: var(--main-color)"></i>
+                </div>
+                <div>
+                  <small class="text-secondary d-block mb-1">Current Service</small>
+
+                  {% if provider["status"] == 'active' %}
+                    <span class="fw-semibold">
+                      {{ provider.serv_name or 'Active queue' }}
+                    </span>
+                  {% else %}
+                    <span class="text-secondary">No active service</span>
+                  {% endif %}
+                </div>
+              </div>
+
+              <!-- Actions -->
+              <div class="d-flex flex-column flex-sm-row gap-2">
+                <a
+                  href="/providers/history/{{ provider['id'] }}"
+                  class="btn btn-outline-primary flex-fill"
+                >
+                  <i class="bi bi-clock-history me-1"></i>
+                  View History
+                </a>
+
+                {% if provider["status"] == 'active' %}
+                  <a
+                    href="/provider/Queue/endshift/{{ provider['id'] }}"
+                    class="btn btn-outline-warning flex-fill"
+                  >
+                    <i class="bi bi-stop-circle me-1"></i>
+                    End Shift
+                  </a>
+                {% else %}
+                  <button
+                    type="button"
+                    class="btn btn-outline-secondary flex-fill"
+                    disabled
+                  >
+                    <i class="bi bi-moon me-1"></i>
+                    Offline
+                  </button>
+                {% endif %}
+              </div>
+
+              <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 border-top mt-3 pt-3">
+                <small class="text-secondary">
+                  <i class="bi bi-shield-check me-1"></i>
+                  Linked to your company
+                </small>
+
+                <a
+                  href="/manager/providers/revoke/{{ provider['id'] }}"
+                  class="link-danger small fw-semibold text-decoration-none"
+                >
+                  <i class="bi bi-person-dash me-1"></i>
+                  Revoke Provider
+                </a>
+              </div>
+
+            </div>
+          </article>
+        </div>
+      {% endfor %}
+    </div>
+
+  {% else %}
+    <!-- Empty State -->
+    <div class="card border-0 shadow-sm rounded-4">
+      <div class="card-body text-center py-5 px-3">
+        <i class="bi bi-people display-4 d-block mb-3" style="color: var(--main-color)"></i>
+        <h3 class="h5 fw-bold">No providers yet</h3>
+        <p class="text-secondary mb-0 mx-auto" style="max-width: 420px">
+          Your team is waiting to grow. Enter a provider's invite code above
+          to connect your first team member.
+        </p>
+      </div>
+    </div>
+  {% endif %}
+
+</div>
 {% endblock %}

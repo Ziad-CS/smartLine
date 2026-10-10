@@ -1,65 +1,114 @@
 :root {
-  --main-color : #0c206d;
-  --main-color-light : #1a38b3;
-  --white : #fff;
-  --black : #4a4a4a; 
+  /* ---------- Brand ---------- */
+  --main-color-light: #1a38b3;
+  --main-color: #0c206d;
+  --main-color-dark: #0b2545;
+  --main-rgb: 12, 32, 109;
+
+  --accent: #f27a3d;
+  --accent-dark: #e8714a;
+
+  /* ---------- Text & neutrals ---------- */
+  --text: #4a4a4a;
+  --muted: #717680;
+  --border: #e5e7eb;
+  --white: #fff;
+  --blue-white: rgb(245, 245, 246);
+
+  /* ---------- Surfaces ---------- */
+  --bg-body: #f8fafc;
+  --sub-bg: #f1f5f9;
+  /* * --sub-bg: #EAF6F0; --sub-bg-light: #F4FCE2; */
+
+  /* ---------- Status ---------- */
+  --success: #16a34a;
+  --success-bg: #dcfce7;
+  --warning: #f59e0b;
+  --warning-bg: #fef3c7;
+  --danger: #dc2626;
+  --danger-bg: #fee2e2;
+
+  --green: #064e3b;
+
+  /* ---------- Layout ---------- */
+  --topbar-h: 64px;
+  --sidebar-w: 240px;
 }
-main
-{
-  background-color: #fff;
+
+/* ---------- Main layout ---------- */
+
+body {
+  background-color: var(--bg-body);
+}
+.topbar {
+  height: var(--topbar-h);
+}
+.logo {
+  height: 40px;
+}
+.avatar {
+  min-width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--main-color);
+  color: #fff;
+  font-weight: 600;
+  font-size: 0.85rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.avatar-lg {
+  min-width: 46px;
+  height: 46px;
+  font-size: 1rem;
+}
+.dropdown-menu.user-menu {
+  --bs-dropdown-min-width: 17.5rem;
+  min-width: 17.5rem !important;
+  max-width: calc(100vw - var(--sidebar-w) - 48px);
+  border-radius: 14px;
+}
+.user-menu .dropdown-item.active {
+  background: rgba(12, 32, 109, 0.08);
+  color: var(--main-color);
+  font-weight: 600;
+}
+.sidebar,
+.sidebar nav {
+  background: var(--main-color) !important;
+  width: var(--sidebar-w);
+}
+.sidebar .nav-link {
+  color: #dbe3ff;
+  border-radius: 10px;
+}
+.sidebar .nav-link:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+.sidebar .nav-link.active {
+  background: #1a38b3;
+  color: #fff;
+}
+/* 
+nav {
+  background-color: var(--subBg );
+} */
+main {
+  background-color: var(--bg-body);
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
   align-content: center;
   position: relative;
+  width: 100vw;
 }
-.none {
-  display: none;
-}
-.end {
-  margin-left: auto;
-}
-.active-color, .active-color::before, .active-color::after {
-  color: var(--main-color-light);
-}
-.full-width {
-  width: 100%;
-}
-.flex {
-  display: flex;
-}
-.just-between {
-  justify-content: space-between;
-}
-.unbutton {
-  background: none;
-  border: none;
-  padding: 0;
-  margin: 0;
-  font: inherit;
-  color: inherit;
-  cursor: pointer;
-}
-.unlist {
-  display: flex;
-  padding: 0;
-  margin: 0;
-  list-style-type: none;
-}
-.cap {
-  text-transform: capitalize;
-}
-.pointer {
-  cursor: pointer;
-}
-.main-color {
-  color: var(--main-color);
-}
-nav {
+/* .topbar {
   position: sticky !important;
   top: 0;
   z-index: 999999;
-  /* background-image: linear-gradient(to right, rgb(238, 239, 240) 10%, #0c1f6dbe 80%, #0c1f6db9 100%) ; */
   padding: 10px 20px 4px 0px !important;
   font-weight: 600;
   font-size: 1em;
@@ -99,7 +148,7 @@ nav .container-fluid {
   background-color: #fff;
   padding: 1.5px;
   border-radius: 100px;
-}
+} */
 /* * checkbox in profile manage company*/
 .custom-switch-box {
   display: flex !important;
@@ -148,7 +197,7 @@ nav .container-fluid {
   font-size: 1.2em;
 }
 .alert-no {
-  border: var(--bs-danger) 2px solid!important;
+  border: var(--bs-danger) 2px solid !important;
   background-color: #fba4abc8 !important;
   /* color: var(--bs-danger); */
 }
@@ -160,14 +209,14 @@ nav .container-fluid {
 #toastContainer {
   position: fixed;
   top: 20px;
-  right: 20px; 
+  right: 20px;
   z-index: 999999;
   display: flex;
   flex-direction: column;
   gap: 15px;
 }
 .custom-toast {
-  background: rgba(255, 255, 255, 0.95); 
+  background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(5px);
   min-width: 280px;
   padding: 16px 24px;
@@ -200,20 +249,20 @@ nav .container-fluid {
   font-size: 20px;
 }
 .toast-error .toast-icon {
-color: #ff4d4f; 
+  color: #ff4d4f;
 }
 .toast-success .toast-icon {
-  color: #28a745; 
+  color: #28a745;
 }
 .field-error {
-    display: none;
-    color: #dc3545;
-    margin-top: 4px;
-    font-size: 13px;
+  display: none;
+  color: #dc3545;
+  margin-top: 4px;
+  font-size: 13px;
 }
 
 .form-control.input-error {
-    border-color: #dc3545;
+  border-color: #dc3545;
 }
 .buttons-cont {
   display: inline-flex;
@@ -244,7 +293,7 @@ color: #ff4d4f;
 .profile-dropdown-menu {
   position: absolute;
   top: 60px;
-  right:5px;
+  right: 5px;
   /* padding: 5px 20px; */
   min-width: 250px;
   box-shadow: 0 4px 12px rgba(10, 38, 71, 0.45);
@@ -279,35 +328,33 @@ color: #ff4d4f;
 .name {
   padding: 10px 5px;
 }
-.active {
-  padding-left: 5px;
-}
+
 /*! provider Queue */
-  /* * (%) structare  */
+/* * (%) structare  */
 .stat-badge {
   display: inline-flex;
   align-items: center;
   padding: 4px 8px;
   border-radius: 6px;
   font-weight: 600;
-  font-size: 15px; 
+  font-size: 15px;
 }
 
 .stat-badge i {
-  font-size: 18px; /* لتكبير السهم قليلاً ليتناسب مع الصورة */
+  font-size: 18px;
   margin-right: 2px;
 }
 
 .good {
-  color: #28a745; 
-  background-color: rgba(40, 167, 69, 0.3); 
+  color: #28a745;
+  background-color: rgba(40, 167, 69, 0.3);
 }
 
 .bad {
-  color: #dc3545; 
-  background-color: rgba(220, 53, 69, 0.3); 
+  color: #dc3545;
+  background-color: rgba(220, 53, 69, 0.3);
 }
-  /* * waiting counter */
+/* * waiting counter */
 .customer-container {
   counter-reset: customer;
 }
@@ -343,7 +390,7 @@ color: #ff4d4f;
 }
 
 .btn-primary-navy:hover {
-  background-color: #26344b !important;
+  background-color: var(--main-color-dark) !important;
 }
 .modal-backdrop.show {
   opacity: 0.6;
@@ -362,54 +409,547 @@ color: #ff4d4f;
   field-sizing: content;
   outline: 0;
 }
-/* ! find Queue */
-.input-container {
-  position: relative;
-  display: inline-block;
-  width: 350px; 
+
+/* ---------- find company ---------- */
+
+/* Container scroll for category pills */
+.category-scroll-container {
+  overflow-x: auto;
+  white-space: nowrap;
+  scrollbar-width: none; /* Firefox */
 }
-.input-container input {
-  width: 100%;
-  padding: 10px 35px 10px 15px; 
-  box-sizing: border-box;
-  border-radius: 20px;
-  border: black solid 2px;
+.category-scroll-container::-webkit-scrollbar {
+  display: none; /* Chrome & Safari */
+}
+
+/* Category Pill Styling */
+.category_btn {
+  background-color: #f1f5f9;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+  border-radius: 50rem;
+  padding: 6px 18px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 0.2s ease-in-out;
+}
+
+.category_btn:hover {
+  background-color: #e2e8f0;
+  color: #1e293b;
+}
+
+.category_btn.active {
+  background-color: var(
+    --main-color-dark
+  ) !important; /* اللون الكحلي الداكن من التصميم */
+  color: #ffffff !important;
+  border-color: #0b2545 !important;
+}
+
+/* Modern Service Card */
+.queue-modern-card {
+  background: #ffffff;
+  border-radius: 18px;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+  border: 1px solid #f1f5f9 !important;
+}
+
+.queue-modern-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.08) !important;
+}
+
+.icon-bubble {
+  width: 48px;
+  height: 48px;
+  background-color: #eef2ff;
+  color: #3b82f6;
+}
+
+.card-offline {
+  opacity: 0.75;
+  background-color: #fbfbfc;
+}
+
+/* Search Box Form */
+.search-box-wrapper {
+  border-color: #e2e8f0 !important;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.search-box-wrapper:focus-within {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15) !important;
+}
+
+.search-submit-btn {
+  background-color: var(--main-color-dark);
+  border: none;
+  font-size: 0.9rem;
+}
+
+.search-submit-btn:hover {
+  background-color: #163860;
+}
+/* ============ End of Find company =========== */
+
+/* ---------- Queues of company ---------- */
+
+/* --- Link & Base --- */
+.back-link {
+  color: var(--muted);
+  transition:
+    color 0.2s ease,
+    transform 0.2s ease;
+}
+.back-link:hover {
+  color: var(--main-color);
+  transform: translateX(-3px);
+}
+
+/* --- Company Header Card --- */
+.company-header-card {
+  background: var(--white);
+  border: 1px solid var(--border) !important;
+}
+
+.company-avatar-box {
+  width: 64px;
+  height: 64px;
+  background-color: var(--sub-bg);
+  color: var(--main-color);
+}
+
+.category-badge {
+  background-color: var(--sub-bg);
+  color: var(--main-color);
+  border: 1px solid var(--border);
+  font-weight: 500;
+  padding: 6px 14px;
+}
+
+.status-indicator {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+/* --- Buttons & Sort Controls --- */
+.btn-fastest {
+  background-color: var(--accent);
+  color: #fff;
+  border: none;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+.btn-fastest:hover {
+  background-color: var(--accent-dark);
+  color: #fff;
+  transform: translateY(-1px);
+}
+
+.sort-btn {
+  background: transparent;
+  color: var(--muted);
+  border: none;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+.sort-btn.active {
+  background: var(--main-color-dark) !important;
+  color: #fff !important;
+}
+
+/* --- Provider Cards --- */
+.provider-card {
+  background: var(--white);
+  border: 1px solid var(--border) !important;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+.provider-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.06) !important;
+}
+
+.provider-closed {
+  opacity: 0.65;
+  background: #fafafa;
+}
+
+.provider-avatar-bubble {
+  width: 46px;
+  height: 46px;
+  background-color: var(--sub-bg);
+  color: var(--main-color);
+  font-size: 0.95rem;
+}
+
+.metric-cell {
+  background-color: var(--sub-bg);
+}
+
+.text-accent {
+  color: var(--accent) !important;
+}
+
+.btn-join {
+  background-color: var(--main-color);
+  border: none;
+  color: #fff;
+  transition:
+    background-color 0.2s ease,
+    transform 0.15s ease;
+}
+.btn-join:hover {
+  background-color: var(--main-color-light);
+  color: #fff;
+  transform: translateY(-1px);
+}
+/* ========== End Queus of Company ============= */
+
+/* ---------- My Queue Customer ---------- */
+.my-queue-page {
+  --queue-primary: var(--main-color);
+  --queue-primary-light: #eef2ff;
+}
+
+/* Queue status banner */
+.queue-notice {
+  background-color: var(--queue-primary-light);
+  border: 1px solid rgba(var(--main-rgb), 0.08);
+}
+
+.queue-notice-icon {
+  width: 46px;
+  height: 46px;
+  color: var(--main-color-light);
+  background-color: rgba(var(--main-rgb), 0.1);
+}
+
+/* Main card */
+.queue-card {
+  background-color: var(--white);
+  border: 1px solid var(--border) !important;
+}
+
+/* Service icon */
+.service-icon {
+  width: 52px;
+  height: 52px;
+  color: var(--main-color-light);
+  background-color: rgba(var(--main-rgb), 0.08);
+}
+
+/* Main statistics */
+.stat-label {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+.stat-value {
+  overflow-wrap: anywhere;
+}
+
+/* Secondary statistics */
+.secondary-stat {
+  background-color: var(--bg-body);
+  border: 1px solid var(--border);
+}
+
+.secondary-stat-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  color: var(--main-color-light);
+  background-color: rgba(var(--main-rgb), 0.08);
+  border-radius: 12px;
+}
+
+/* Rating */
+.rating-icon {
+  color: var(--warning);
+  background-color: var(--warning-bg);
+}
+
+/* Supporting text */
+.stat-caption {
+  font-size: 0.75rem;
+  line-height: 1.4;
+  margin-bottom: 3px;
+}
+
+/* Information notice */
+.queue-info {
+  background-color: var(--sub-bg);
+  border: 1px solid var(--border);
+}
+
+/* Responsive */
+@media (max-width: 575.98px) {
+  .my-queue-page {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .queue-card {
+    padding: 18px !important;
+  }
+
+  .stat-label {
+    align-items: flex-start;
+    font-size: 0.72rem;
+  }
+
+  .stat-label i {
+    margin-top: 2px;
+  }
+
+  .stat-value {
+    font-size: 1rem;
+  }
+
+  .secondary-stat {
+    align-items: flex-start !important;
+    flex-direction: column;
+    gap: 10px !important;
+    padding: 12px !important;
+  }
+
+  .stat-caption {
+    font-size: 0.7rem;
+  }
+}
+@media (max-width: 360px) {
+  .queue-card {
+    padding: 14px !important;
+  }
+  .queue-card .badge {
+    font-size: 0.68rem;
+    padding: 6px 8px !important;
+  }
+  .service-icon {
+    width: 44px;
+    height: 44px;
+  }
+  .stat-value {
+    font-size: 0.9rem;
+  }
+}
+/* ========== My Queue Customer ========== */
+
+/* ---------- Customer History ---------- */
+.my-history-page {
+  --history-primary: var(--main-color);
+  --history-primary-light: var(--main-color-light);
+} /* Header */
+.history-header-icon {
+  width: 58px;
+  height: 58px;
+  color: var(--history-primary);
+  background-color: rgba(var(--main-rgb), 0.08);
+}
+.history-summary {
+  background-color: var(--white);
+  border: 1px solid var(--border);
+}
+.history-summary-divider {
+  height: 35px;
+  width: 1px;
+  background-color: var(--border);
+} /* Search */
+.history-controls {
+  background-color: var(--white);
+  border: 1px solid var(--border);
+  box-shadow: 0 3px 12px rgba(12, 32, 109, 0.035);
+}
+.history-search-input {
+  min-height: 46px;
+  padding: 10px 42px;
+  padding-right: 42px;
+  border-color: var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  background-color: var(--white);
+}
+.history-search-input:focus {
+  border-color: var(--history-primary-light);
+  box-shadow: 0 0 0 0.2rem rgba(var(--main-rgb), 0.1);
+}
+.search-icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted);
+  z-index: 2;
+  pointer-events: none;
 }
 .clear-icon {
   position: absolute;
-  right: 12px;
+  right: 10px;
   top: 50%;
   transform: translateY(-50%);
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 24px;
+  line-height: 1;
   cursor: pointer;
-  color: #888;
-  font-size: 18px;
-  display: none; /* مخفية افتراضياً ومش هتظهر غير لما المستخدم يكتب */
 }
 .clear-icon:hover {
-  color: #333;
+  color: var(--danger);
 }
-.service-card {
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
-  background: #ffffff;
+.history-search-btn {
+  min-height: 46px;
+  color: var(--white);
+  background-color: var(--main-color);
+  border: 1px solid var(--main-color);
+  border-radius: 10px;
+  font-weight: 600;
 }
-
-.service-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06) !important;
+.history-search-btn:hover {
+  color: var(--white);
+  background-color: var(--main-color-light);
+  border-color: var(--main-color-light);
+} /* Category Filters */
+.category_btn {
+  padding: 8px 18px;
+  border: 1px solid var(--border);
+  border-radius: 30px;
+  color: var(--text);
+  background-color: var(--white);
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition:
+    background-color 0.2s,
+    color 0.2s,
+    border-color 0.2s;
 }
-
-.service-card-closed {
-  opacity: 0.75;
-  background-color: #fafafa;
+.category_btn:hover {
+  border-color: var(--main-color-light);
+  color: var(--main-color);
 }
-
+.category_btn.active {
+  color: var(--white);
+  background-color: var(--main-color);
+  border-color: var(--main-color);
+} /* History Cards */
+.history-card {
+  background-color: var(--white);
+  border: 1px solid var(--border);
+  box-shadow: 0 3px 12px rgba(12, 32, 109, 0.035);
+  transition:
+    box-shadow 0.2s,
+    border-color 0.2s;
+}
+.history-card:hover {
+  border-color: rgba(var(--main-rgb), 0.2);
+  box-shadow: 0 5px 18px rgba(12, 32, 109, 0.07);
+}
 .service-icon {
-  transition: background-color 0.2s;
+  width: 54px;
+  height: 54px;
+  color: var(--main-color-light);
+  background-color: rgba(var(--main-rgb), 0.08);
 }
+.history-completed-badge {
+  color: var(--success);
+  background-color: var(--success-bg);
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.history-divider {
+  border-color: var(--border);
+  opacity: 1;
+  margin: 16px 0;
+} /* Details */
+.history-detail-label {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+.history-detail-value {
+  color: var(--text);
+  font-size: 0.9rem;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.history-star {
+  color: var(--warning);
+}
+.history-rating {
+  color: var(--text);
+  font-weight: 600;
+} /* Responsive */
+@media (max-width: 575.98px) {
+  .my-history-page {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+  .history-header-icon {
+    width: 48px;
+    height: 48px;
+  }
+  .my-history-page h1 {
+    font-size: 1.65rem;
+  }
+  .history-summary {
+    width: 100%;
+    justify-content: center;
+  }
+  .history-controls {
+    padding: 14px !important;
+  }
+  .category_btn {
+    padding: 7px 13px;
+    font-size: 0.8rem;
+  }
+  .history-card {
+    padding: 16px !important;
+  }
+  .service-icon {
+    width: 46px;
+    height: 46px;
+  }
+  .history-completed-badge {
+    padding: 5px 8px !important;
+    font-size: 0.68rem;
+  }
+  .history-detail-label {
+    font-size: 0.7rem;
+  }
+  .history-detail-value {
+    font-size: 0.8rem;
+  }
+}
+/* ========== Customer History ========== */
+/* ---------- Providers for manager ---------- */
+  .providers-page .btn-primary {
+    background-color: var(--main-color);
+    border-color: var(--main-color);
+  }
 
-.service-card:hover .service-icon {
-  background-color: rgba(13, 110, 253, 0.15) !important;
-}
+  .providers-page .btn-primary:hover {
+    background-color: var(--main-color-light);
+    border-color: var(--main-color-light);
+  }
+/* ========== Providers for manager ========== */
+
 /* ! provider start queue */
 .shake-error {
   animation: shake 0.3s ease-in-out;
@@ -434,21 +974,139 @@ color: #ff4d4f;
 }
 
 @keyframes shake {
-  0%, 100% { transform: translateX(0); }
-  25% { transform: translateX(-5px); }
-  75% { transform: translateX(5px); }
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-5px);
+  }
+  75% {
+    transform: translateX(5px);
+  }
 }
-@media (max-width : 991.25px) {
+/* ! @media (max-width : 991.25px) {
   .non-collapse {
     display: flex;
   }
   nav {
     padding: 10px 5px 4px !important;
   }
-
+} */
+@media (min-width: 992px) {
+  .with-sidebar {
+    width: calc(100vw - var(--sidebar-w));
+  }
+  .sidebar {
+    position: sticky;
+    top: var(--topbar-h);
+    bottom: 0;
+    left: 0;
+    width: var(--sidebar-w);
+    height: calc(100vh - var(--topbar-h)) !important;
+    overflow-y: auto;
+    z-index: 1020;
+  }
+  .sidebar nav {
+    height: 100%;
+  }
 }
-@media (max-width : 767px) {
+@media (max-width: 992px) {
+  .mobile-nav.collapsing {
+    transition: height 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .mobile-nav {
+    background-image: linear-gradient(to top, var(--main-color-dark) 92.5%, var(--blue-white) 99%, var(--blue-white) 100%) !important;
+    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(16px);
+    border: 2px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 20px 30px rgba(6, 1, 29, 0.62) !important;
+    overflow: hidden;
+    padding: 12px 14px 0px;
+    transition:
+      background-color 0.25s ease,
+      color 0.25s ease,
+      padding-left 1s ease;
 
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    border-width: 0 !important;
+  }
+  .mobile-nav a {
+    color: var(--white) !important;
+    padding: 13px 16px;
+    transition:
+      background-color 0.25s ease,
+      color 0.25s ease,
+      padding-left 1s ease;
+  }
+  .mobile-nav a:active {
+    background: rgba(242, 122, 61, 0.22);
+  }
+}
+@media (min-width: 767px) {
+}
+@media (max-width: 30px) {
+  /* Customer History */
+  .history-completed-badge {
+    font-size: 0;
+  }
+  .history-completed-badge i {
+    font-size: 0.8rem;
+    margin: 0 !important;
+  }
+  .history-detail-label {
+    font-size: 0.65rem;
+  }
+  .history-detail-value {
+    font-size: 0.75rem;
+  }
+  /* End Customer History */
+}
+/* ---------- My small frame work ---------- */
+.none {
+  display: none;
+}
+.end {
+  margin-left: auto;
+}
+.active-color,
+.active-color::before,
+.active-color::after {
+  color: var(--main-color-light);
+}
+.full-width {
+  width: 100%;
+}
+.flex {
+  display: flex;
+}
+.just-between {
+  justify-content: space-between;
+}
+.unbutton {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+.unlist {
+  display: flex;
+  padding: 0;
+  margin: 0;
+  list-style-type: none;
+}
+.cap {
+  text-transform: capitalize;
+}
+.pointer {
+  cursor: pointer;
+}
+.main-color {
+  color: var(--main-color);
 }
 
 /* :root {

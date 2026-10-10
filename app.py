@@ -8,6 +8,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from functions import apology, login_required, guest_ban, send_otp, calculate_change, limitFloat, estimation, clear_user_session, getCities, toMinutes, get_client_ip, period_bounds
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
+from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
 import random
 import string
 import smtplib
@@ -17,6 +18,7 @@ import re
 
 # Configure application
 app = Flask(__name__)
+app.config["TEMPLATES_AUTO_RELOAD"] = True
 
 # Configure session to use filesystem (instead of signed cookies)
 app.config["SESSION_PERMANENT"] = False
@@ -41,6 +43,10 @@ def after_request(response):
 @app.context_processor
 def inject_roles():
   if "user_id" not in session :
+    if session.get("login_state") == 2:
+      ip = get_client_ip()
+      done = db.execute("SELECT COUNT(*) AS total FROM service_logs WHERE ip_address = ?", ip)
+      session["serv_count"] = min(done[0]["total"], 3) if done else 0
     return dict(my_roles=[], comp = "")
   id = session["user_id"]
   user = db.execute("SELECT * FROM users WHERE id = ?", id)
@@ -48,13 +54,14 @@ def inject_roles():
   comp = ""
   prov = -1
   manager = db.execute("SELECT * FROM managers WHERE user_id = ?", id)
+  
   if len(manager) == 1 :
     my_roles.append("manager")
-    if session["role"] == "manager" :
+    if session.get("role") == "manager" :
       comp = db.execute("SELECT * FROM companies WHERE manager_id = ?", manager[0]["id"])
   if len(db.execute("SELECT * FROM providers WHERE user_id = ?", id)) == 1 :
     my_roles.append("prov")
-    if session["role"] == "prov" :
+    if session.get("role") == "prov" :
       comp = db.execute("SELECT companies.* FROM providers JOIN managers ON providers.manager_id = managers.id JOIN companies ON companies.manager_id = managers.id WHERE providers.user_id = ?", id)
       prov = db.execute("SELECT * FROM providers WHERE user_id = ?", id)[0]['id']
   if comp :
@@ -64,6 +71,7 @@ def inject_roles():
 @app.route("/")
 @login_required
 def index():
+  print("the srev ldsajo = " + str(session.get("serv_count", 4)))
   return apology("home")
 
 
@@ -173,9 +181,11 @@ def access():
     if not name :
       flash("enter your name pls", category="no")
       return redirect("/guest")
+    ip = get_client_ip()
+    done = db.execute("SELECT * FROM service_logs WHERE ip_address = ?", ip)
     session["login_state"] = 2
     session["name"] = name
-    session["serv_count"] = 0
+    session["serv_count"] = len(done) if len(done) <= 3 else 3
     session["country"] = 'egypt'
     session["city"] = 'cairo'
     flash("You are login as Guest and you have 3 services only", category="yes")
@@ -582,7 +592,7 @@ def join(queue_id) :
       flash("You already have an active queue ticket.", category="no")
       return redirect("/customer/myQueue")
   else :
-    ip = get_client_ip();
+    ip = get_client_ip()
     found = db.execute("SELECT * FROM queue_entries WHERE ip_address = ? AND status != 'done'", ip)
     done = db.execute("SELECT * FROM service_logs WHERE ip_address = ?", ip)
     if len(done) >= 3  or session.get("serv_count", 4) >= 3:
@@ -955,7 +965,7 @@ def leaveQueue() :
 @app.route("/customer/review/<queueEntryId>", methods=['GET','POST'])
 @login_required
 def review(queueEntryId) :
-  user = db.execute("SELECT * FROM users WHERE id = ?", session['user_id'])
+  user = db.execute("SELECT * FROM users WHERE id = ?", session.get('user_id'))
   if user :
     log = db.execute("SELECT * FROM service_logs WHERE queue_entry_id = ? AND user_id = ?", queueEntryId, user[0]['id'])
   else :
@@ -971,7 +981,7 @@ def review(queueEntryId) :
       if user :
         db.execute("UPDATE service_logs SET stars = ? WHERE queue_entry_id = ? AND user_id = ?", stars, queueEntryId, user[0]['id'])
       else :
-        db.execute("UPDATE service_logs SET stars = ? WHERE queue_entry_id = ? AND user_id = ?", stars, queueEntryId, ip)
+        db.execute("UPDATE service_logs SET stars = ? WHERE queue_entry_id = ? AND ip_address = ?", stars, queueEntryId, ip)
     else :
       flash("Please select a rating between 1 and 5.", category="no")
       return redirect(f"/customer/review/{str(queueEntryId)}")
@@ -1005,8 +1015,11 @@ def review(queueEntryId) :
 @guest_ban
 def customerHistory(user_id) :
   if session.get("user_id") != int(user_id.strip()):
-    flash("Unauthorized access.", category="no")
-    return redirect("/")
+    if session.get("user_id") :
+      user_id = session.get("user_id")
+    else :
+      flash("Unauthorized access.", category="no")
+      return redirect("/")
   
   user = db.execute("SELECT * FROM users WHERE id = ?", user_id)
   if not user:
@@ -1020,8 +1033,15 @@ def customerHistory(user_id) :
   search_filter = ""
   params = [user_id]
   if search_query:
-    search_filter = "AND c.name LIKE ?"
-    params.append(f"%{search_query}%")
+        search_filter = """
+            AND (
+                c.name LIKE ?
+                OR COALESCE(s.name, 'General Service') LIKE ?
+                OR u_prov.name LIKE ?
+            )
+        """
+        search_term = f"%{search_query}%"
+        params.extend([search_term, search_term, search_term])
 
   print(str(period) + 'used in this = ' + str(date_filter))
   query = f"""
@@ -1071,7 +1091,14 @@ def customerHistory(user_id) :
     "items": raw_logs
   }
 
-
+  print("URL user_id:", user_id)
+  print("Session user_id:", session.get("user_id"))
+  print("Period:", period)
+  print("Date filter:", repr(date_filter))
+  print("Search query:", repr(search_query))
+  print("SQL params:", params)
+  print("SQL query:", query)
+  print("Results count:", len(raw_logs))
   return render_template("customerHistory.html", data=data)
 
 
@@ -1140,7 +1167,7 @@ def providerQueue() :
       started = ( datetime.now() - datetime.strptime(serviceData[0]["start_time"], "%Y-%m-%d %H:%M:%S") ).total_seconds() / 60
     else :
       # insert data
-      ip = get_client_ip();
+      ip = serving[0]['ip_address']
       if serving[0]["user_id"] :
         db.execute("INSERT INTO service_logs (queue_id, user_id, queue_entry_id, user_name, company_name, start_time, ip_address) VALUES (?, ?, ?, ?, ?, ?, ?)",
                     nowQueue[0]["id"], serving[0]["user_id"], serving[0]["id"], serving[0]["user_name"],comp[0]["name"] , datetime.now().strftime("%Y-%m-%d %H:%M:%S"), ip)
@@ -1148,15 +1175,11 @@ def providerQueue() :
         db.execute("INSERT INTO service_logs (queue_id, queue_entry_id, user_name, company_name, start_time, ip_address) VALUES (?, ?, ?, ?, ?, ?)",
                     nowQueue[0]["id"], serving[0]["id"], serving[0]["user_name"],comp[0]["name"] ,datetime.now().strftime("%Y-%m-%d %H:%M:%S"), ip)
         
-        if session.get("serv_count") :
-          session["serv_count"] += 1
-        else :
-          session["serv_count"] = 1
 
       started = 0
 
     dt_object = datetime.strptime(serving[0]["joined_at"], "%Y-%m-%d %H:%M:%S").replace(tzinfo=ZoneInfo("UTC")).astimezone(ZoneInfo("Africa/Cairo"))
-    joined = dt_object.strftime("%-I:%M %p")
+    joined = dt_object.strftime("%I:%M %p").lstrip('0')
   else :
     started = 0
     joined = datetime.now().strftime("%-I:%M %p")
@@ -1177,29 +1200,28 @@ def providerQueue() :
   else :
     total_est_time = 0
 
-  if avg_prov_time : 
-    for customer in nowWaiting :
-      name = customer["user_name"]
-      user_type = "Registered" if customer["user_id"] else "Guest"
-      dt_object = datetime.strptime(customer["joined_at"], "%Y-%m-%d %H:%M:%S")
-      joined_ago = (datetime.now() - dt_object).total_seconds() / 60
-      joined_time = dt_object.strftime("%-I:%M %p")
+  for customer in nowWaiting :
+    name = customer.get("user_name") or "Guest"
+    user_type = "Registered" if customer["user_id"] else "Guest"
+    dt_object = datetime.strptime(customer["joined_at"], "%Y-%m-%d %H:%M:%S")
+    joined_ago = (datetime.now() - dt_object).total_seconds() / 60
+    joined_time = dt_object.strftime("%I:%M %p").lstrip('0')
 
-      # * to get the estimated time by get the average of services in the past for provider and customer
-      if user_type == "Registered" :
-        customer_est = db.execute("SELECT * FROM service_logs WHERE end_time IS NOT NULL AND user_id = ? ORDER BY start_time DESC LIMIT 5", customer["user_id"])
-      else :
-        customer_est = []
-      # * to calc the waiting time and save the estimation time of customer above
-      client_duration = estimation(prov_est, customer_est)
-      waiting.append({
-        "name" : name,
-        "type" : user_type,
-        "ago" : joined_ago,
-        "time" : joined_time,
-        "wait_time" : round(total_est_time, 1)
-      })
-      total_est_time += client_duration
+    # * to get the estimated time by get the average of services in the past for provider and customer
+    if user_type == "Registered" :
+      customer_est = db.execute("SELECT * FROM service_logs WHERE end_time IS NOT NULL AND user_id = ? ORDER BY start_time DESC LIMIT 5", customer["user_id"])
+    else :
+      customer_est = []
+    # * to calc the waiting time and save the estimation time of customer above
+    client_duration = estimation(prov_est, customer_est)
+    waiting.append({
+      "name" : name,
+      "type" : user_type,
+      "ago" : joined_ago,
+      "time" : joined_time,
+      "wait_time" : round(total_est_time, 1)
+    })
+    total_est_time += client_duration
   return render_template("providerQueue.html",
                           servedToDay=len(nowlog),
                           servedCompare=calculate_change(len(nowlog), len(lastlog)),
@@ -1279,7 +1301,7 @@ def dataProviderQueue() :
       started = ( datetime.now() - datetime.strptime(serviceData[0]["start_time"], "%Y-%m-%d %H:%M:%S") ).total_seconds() / 60
 
     dt_object = datetime.strptime(serving[0]["joined_at"], "%Y-%m-%d %H:%M:%S")
-    joined = dt_object.strftime("%-I:%M %p")
+    joined = dt_object.strftime("%I:%M %p").lstrip('0')
 
   if serving :
     total_est_time = (serving_est - started) if serving_est - started > 0 else 0
@@ -1291,29 +1313,28 @@ def dataProviderQueue() :
 
   avg_prov_time = estimation(prov_est)
 
-  if avg_prov_time : 
-    for customer in nowWaiting :
-      name = customer["user_name"]
-      user_type = "Registered" if customer["user_id"] else "Guest"
-      dt_object = datetime.strptime(customer["joined_at"], "%Y-%m-%d %H:%M:%S")
-      joined_ago = (datetime.now() - dt_object).total_seconds() / 60
-      joined_time = dt_object.strftime("%-I:%M %p")
+  for customer in nowWaiting :
+    name = customer.get("user_name") or "Guest"
+    user_type = "Registered" if customer["user_id"] else "Guest"
+    dt_object = datetime.strptime(customer["joined_at"], "%Y-%m-%d %H:%M:%S")
+    joined_ago = (datetime.now() - dt_object).total_seconds() / 60
+    joined_time = dt_object.strftime("%I:%M %p").lstrip('0')
 
-      # * to get the estimated time by get the average of services in the past for provider and customer
-      if user_type == "Registered" :
-        customer_est = db.execute("SELECT * FROM service_logs WHERE end_time IS NOT NULL AND user_id = ? ORDER BY start_time DESC LIMIT 5", customer["user_id"])
-      else :
-        customer_est = []
-      # * to calc the waiting time and save the estimation time of customer above
-      client_duration = estimation(prov_est, customer_est)
-      waiting.append({
-        "name" : name,
-        "type" : user_type,
-        "ago" : joined_ago,
-        "time" : joined_time,
-        "wait_time" : round(total_est_time, 1)
-      })
-      total_est_time += client_duration
+    # * to get the estimated time by get the average of services in the past for provider and customer
+    if user_type == "Registered" :
+      customer_est = db.execute("SELECT * FROM service_logs WHERE end_time IS NOT NULL AND user_id = ? ORDER BY start_time DESC LIMIT 5", customer["user_id"])
+    else :
+      customer_est = []
+    # * to calc the waiting time and save the estimation time of customer above
+    client_duration = estimation(prov_est, customer_est)
+    waiting.append({
+      "name" : name,
+      "type" : user_type,
+      "ago" : joined_ago,
+      "time" : joined_time,
+      "wait_time" : round(total_est_time, 1)
+    })
+    total_est_time += client_duration
 
   return jsonify({
     'servedToDay' : len(nowlog),
@@ -1405,18 +1426,14 @@ def call_next():
     db.execute("UPDATE queue_entries SET status = 'serving' WHERE id = ?", customer["id"])
     log = db.execute("SELECT * FROM service_logs WHERE user_id = ? AND end_time IS NULL", customer["user_id"])
     if not log :
-      ip = get_client_ip();
+      ip = db.execute("SELECT * FROM queue_entries WHERE id = ?", customer["id"])
       if customer["user_id"]:
         db.execute("INSERT INTO service_logs (queue_id, user_id, queue_entry_id, user_name, company_name, start_time, ip_address) VALUES (?, ?, ?, ?, ?, ?, ?)",
-              nowQueue[0]["id"], customer["user_id"], customer["id"], customer["user_name"],comp[0]["name"] , datetime.now().strftime("%Y-%m-%d %H:%M:%S"), ip)
+              nowQueue[0]["id"], customer["user_id"], customer["id"], customer["user_name"],comp[0]["name"] , datetime.now().strftime("%Y-%m-%d %H:%M:%S"), ip[0]['ip_address'])
       else:
         db.execute("INSERT INTO service_logs (queue_id, queue_entry_id, user_name, company_name, start_time, ip_address) VALUES (?, ?, ?, ?, ?, ?)",
-              nowQueue[0]["id"], customer["id"], customer["user_name"],comp[0]["name"] ,datetime.now().strftime("%Y-%m-%d %H:%M:%S"), ip)
+              nowQueue[0]["id"], customer["id"], customer["user_name"],comp[0]["name"] ,datetime.now().strftime("%Y-%m-%d %H:%M:%S"), ip[0]['ip_address'])
         
-        if session.get("serv_count") :
-          session["serv_count"] += 1
-        else :
-          session["serv_count"] = 1
   else:
     flash("No customers waiting", category="no")
       
@@ -2278,12 +2295,15 @@ def changeLocation() :
   if session.get("login_state", -1) == 0 :
     db.execute("UPDATE users SET country = ?, city = ? WHERE id = ?", country.strip().lower(), city.strip().lower(),session["user_id"])
 
-  if  location.endswith("?") :
-    add_country_city = f"country={country}&city={city}"
-  elif "?" in location:
-    add_country_city = f"&country={country}&city={city}"
-  else :
-    add_country_city = f"?country={country}&city={city}"
+  parsed_url = urlparse(location)
+  query_params = parse_qs(parsed_url.query)
+
+  query_params["country"] = [country]
+  query_params["city"] = [city]
+  new_query = urlencode(query_params, doseq=True)
+  new_url = urlunparse((parsed_url.scheme, parsed_url.netloc, parsed_url.path, parsed_url.params, new_query, parsed_url.fragment))
+  
+  return new_url
   return location + add_country_city
 
 # * Change Password

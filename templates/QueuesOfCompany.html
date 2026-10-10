@@ -5,214 +5,223 @@
 {% endblock %}
 
 {% block main %}
-  <div class="container py-4" style="max-width: 900px;">
+  <div class="container py-4" style="max-width: 980px;">
 
-    <a href="/customer/findQueue" class="text-decoration-none text-primary small mb-3 d-inline-block">
-      <i class="bi bi-arrow-left me-1"></i> Back to Search
+    <a href="/customer/findQueue" class="text-decoration-none back-link small mb-3 d-inline-flex align-items-center gap-1">
+      <i class="bi bi-arrow-left"></i> Back to Search
     </a>
 
-    <!-- Company Header -->
-    <div class="card border-0 shadow-sm rounded-4 p-4 mb-4">
-      <div class="d-flex align-items-start gap-3">
-        <div class="bg-primary bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style="width: 64px; height: 64px;">
-          <div class="service-icon rounded-circle bg-primary bg-opacity-10 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 48px; height: 48px;">
-            {% if 'Clinics & Healthcare' in comp_data['category']|lower %}
-              <i class="bi bi-heart-pulse text-primary fs-5"></i>
-            {% elif 'Banks & Finance' in comp_data['category']|lower %}
-              <i class="bi bi-bank text-primary fs-5"></i>
-            {% elif 'Government Offices' in comp_data['category']|lower %}
-              <i class="bi bi-file-earmark-text text-primary fs-5"></i>
-            {% elif 'Telecom & Customer Service' in comp_data['category']|lower %}
-              <i class="bi bi-broadcast text-primary fs-5"></i>
-            {% elif 'Education' in comp_data['category']|lower %}
-              <i class="bi bi-mortarboard text-primary fs-5"></i>
-            {% else %}
-              <i class="bi bi-building text-primary fs-5"></i>
-            {% endif %}
-          </div>
+    <!-- Company Header Card -->
+    <div class="card border-0 shadow-sm rounded-4 p-4 mb-4 company-header-card">
+      <div class="d-flex flex-column flex-md-row align-items-start gap-4">
+        
+        <div class="company-avatar-box rounded-circle d-flex align-items-center justify-content-center flex-shrink-0">
+          {% if 'clinics' in comp_data['cat']|lower or 'health' in comp_data['cat']|lower %}
+            <i class="bi bi-heart-pulse-fill fs-3"></i>
+          {% elif 'banks' in comp_data['cat']|lower or 'finance' in comp_data['cat']|lower %}
+            <i class="bi bi-bank fs-3"></i>
+          {% elif 'government' in comp_data['cat']|lower %}
+            <i class="bi bi-file-earmark-text-fill fs-3"></i>
+          {% elif 'telecom' in comp_data['cat']|lower %}
+            <i class="bi bi-broadcast fs-3"></i>
+          {% elif 'edu' in comp_data['cat']|lower %}
+            <i class="bi bi-mortarboard-fill fs-3"></i>
+          {% else %}
+            <i class="bi bi-building fs-3"></i>
+          {% endif %}
         </div>
+
         <div class="flex-grow-1">
-          <h2 class="fw-bold mb-1">{{ comp_data['name'] }}</h2>
-          <span class="badge rounded-pill bg-light text-primary border px-3 py-2 mb-2">{{ comp_data['cat'] }}</span>
-          <div class="d-flex align-items-center gap-1 mb-2">
-            <i class="bi bi-star-fill text-warning"></i>
-            <span class="fw-semibold">{{ comp_data['rate']|near }}</span>
+          <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+            <h2 class="fw-bold mb-0 text-dark">{{ comp_data['name'] }}</h2>
+            <span class="badge rounded-pill category-badge">{{ comp_data['cat'] }}</span>
+          </div>
+
+          <div class="d-flex align-items-center gap-2 mb-3">
+            <div class="d-flex align-items-center gap-1">
+              <i class="bi bi-star-fill text-warning"></i>
+              <span class="fw-bold text-dark">{{ comp_data['rate']|near if comp_data['rate'] else "New" }}</span>
+            </div>
             <span class="text-muted small">({{ comp_data['reviews'] }} reviews)</span>
           </div>
-          <div class="text-secondary small mb-1">
-            <i class="bi bi-geo-alt me-1"></i> {{ comp_data['address'] }}
-          </div>
-          <div class="text-secondary small mb-1">
-            <i class="bi bi-telephone me-1"></i> {{ comp_data['phone'] }}
-          </div>
-          <div class="d-flex align-items-center gap-2 small">
-            <i class="bi bi-clock text-secondary"></i>
-            {% if comp_data['status'] %}
-              <span class="d-inline-flex align-items-center gap-1 text-success fw-semibold">
-                <span class="rounded-circle bg-success" style="width: 7px; height: 7px;"></span> Open now
-              </span>
-            {% else %}
-              <span class="d-inline-flex align-items-center gap-1 text-secondary fw-semibold">
-                <span class="rounded-circle bg-secondary" style="width: 7px; height: 7px;"></span> Closed now
-              </span>
+
+          <div class="row g-2 text-secondary small mb-3">
+            {% if comp_data['address'] %}
+              <div class="col-12 col-sm-6 d-flex align-items-center gap-2">
+                <i class="bi bi-geo-alt text-muted"></i>
+                <span class="text-truncate">{{ comp_data['address'] }}</span>
+              </div>
             {% endif %}
-            {% if comp_data['open'] and comp_data['close'] %}
-              <span class="text-muted">• {{ comp_data['open'] }} - {{ comp_data['close'] }}</span>
+
+            {% if comp_data['phone'] %}
+              <div class="col-12 col-sm-6 d-flex align-items-center gap-2">
+                <i class="bi bi-telephone text-muted"></i>
+                <span>{{ comp_data['phone'] }}</span>
+              </div>
             {% endif %}
+
+            <div class="col-12 d-flex align-items-center gap-2 mt-1">
+              <i class="bi bi-clock text-muted"></i>
+              {% if comp_data['status'] == 1 %}
+                <span class="d-inline-flex align-items-center gap-1 text-success fw-semibold">
+                  <span class="status-indicator bg-success"></span> Open now
+                </span>
+              {% else %}
+                <span class="d-inline-flex align-items-center gap-1 text-secondary fw-semibold">
+                  <span class="status-indicator bg-secondary"></span> Closed now
+                </span>
+              {% endif %}
+              {% if comp_data['open'] and comp_data['close'] %}
+                <span class="text-muted">• {{ comp_data['open'] }} - {{ comp_data['close'] }}</span>
+              {% endif %}
+            </div>
           </div>
+
+          {% if comp_data['desc'] %}
+            <p class="text-muted small mb-0 pt-2 border-top border-light-subtle">{{ comp_data['desc'] }}</p>
+          {% endif %}
         </div>
       </div>
-      {% if comp_data['desc'] %}
-        <p class="text-secondary small mt-3 mb-0">{{ comp_data['desc'] }}</p>
-      {% endif %}
     </div>
 
-    <div class="d-flex justify-content-between align-items-center mb-3">
-      
+    <!-- Controls Bar -->
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
       <div class="d-flex align-items-center gap-2">
         <i class="bi bi-people-fill text-primary fs-4"></i>
         <div>
-          <h4 class="fw-bold mb-0">Available Counters</h4>
+          <h4 class="fw-bold mb-0 text-dark">Available Counters</h4>
           <small class="text-muted">Choose a provider to join the queue</small>
         </div>
       </div>
-      <div class="input-group input-group-sm" style="width: auto;">
-        <label class="input-group-text bg-light text-muted border-end-0" for="serviceFilter">
-          <i class="bi bi-funnel"></i>
-        </label>
-        <select class="form-select form-select-sm border-start-0 ps-1" id="serviceFilter" onchange="filterByService(this.value)">
-          <option value="all" selected>All Services</option>
-          {% for s in services %}
-            <option value="{{ s.id }}">{{ s.name }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <form method="post" action="/customer/join-fastest" class="m-0">
-        <input type="hidden" name="company_id" value="{{ comp_data.id }}">
-        <input type="hidden" name="selected_service_id" id="fastestServiceInput" value="all">
-        <button type="submit" class="btn btn-sm btn-success d-inline-flex align-items-center gap-1">
-          <i class="bi bi-lightning-charge-fill"></i>
-          <span>Join Fastest</span>
-        </button>
-      </form>
-      <div class="btn-group" role="group">
-        <button type="button" class="btn btn-outline-primary btn-sm sort-btn active" data-sort="fastest">
-          <i class="bi bi-lightning-fill me-1"></i> Fastest wait
-        </button>
-        <button type="button" class="btn btn-outline-primary btn-sm sort-btn" data-sort="rating">
-          <i class="bi bi-star-fill me-1"></i> Highest rated
-        </button>
+
+      <div class="d-flex flex-wrap align-items-center gap-2 ms-auto">
+        <!-- Service Filter -->
+        <div class="input-group input-group-sm rounded-pill overflow-hidden border shadow-sm" style="width: 170px;">
+          <label class="input-group-text bg-white border-0 text-muted ps-3" for="serviceFilter">
+            <i class="bi bi-funnel"></i>
+          </label>
+          <select class="form-select form-select-sm border-0 shadow-none ps-1 pe-3" id="serviceFilter" onchange="filterByService(this.value)">
+            <option value="all" selected>All Services</option>
+            {% for s in services %}
+              <option value="{{ s.id }}">{{ s.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Join Fastest Button -->
+        <form method="post" action="/customer/join-fastest" class="m-0">
+          <input type="hidden" name="company_id" value="{{ comp_data.id }}">
+          <input type="hidden" name="selected_service_id" id="fastestServiceInput" value="all">
+          <button type="submit" class="btn btn-sm btn-fastest rounded-pill px-3 py-1 shadow-sm d-inline-flex align-items-center gap-1">
+            <i class="bi bi-lightning-charge-fill"></i>
+            <span>Join Fastest</span>
+          </button>
+        </form>
+
+        <!-- Sorting Buttons -->
+        <div class="btn-group btn-group-sm rounded-pill p-1 bg-white border shadow-sm" role="group">
+          <button type="button" class="btn sort-btn active rounded-pill px-3" data-sort="fastest">
+            <i class="bi bi-lightning-fill me-1"></i> Fastest
+          </button>
+          <button type="button" class="btn sort-btn rounded-pill px-3" data-sort="rating">
+            <i class="bi bi-star-fill me-1"></i> Rating
+          </button>
+        </div>
       </div>
     </div>
 
-    <div id="providersContainer">
+    <!-- Providers List Grid -->
+    <div id="providersContainer" class="d-flex flex-column gap-3">
       {% for q in queues_data %}
-        <div class="card border-0 shadow-sm rounded-4 p-3 mb-3 provider-card {% if q['status'] != 'active' %}provider-closed{% endif %}"
+        <div class="card border-0 shadow-sm rounded-4 p-3 provider-card {% if q['status'] != 'active' %}provider-closed{% endif %}"
             data-est="{{ q['est'] }}" data-rate="{{ q['rate'] }}">
-          <div class="d-flex justify-content-between align-items-start">
+          
+          <div class="d-flex justify-content-between align-items-center mb-3">
             <div class="d-flex align-items-center gap-3">
-              <div class="bg-primary bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center fw-bold text-primary" style="width: 48px; height: 48px;">
+              <div class="provider-avatar-bubble rounded-circle d-flex align-items-center justify-content-center fw-bold">
                 {{ q['name'][:2]|upper }}
               </div>
               <div>
-                <h6 class="fw-bold mb-0">{{ q['name'] }}</h6>
-                {% if q['service'] %}
-                  <small class="text-muted">{{ q['service'] }}</small>
-                {% else %}
-                  <small class="text-muted"> General Service </small>
-                {% endif %}
+                <h6 class="fw-bold mb-0 text-dark">{{ q['name'] }}</h6>
+                <small class="text-muted">{{ q['service'] or "General Service" }}</small>
               </div>
             </div>
-            <div class="text-end">
-              <div class="d-flex align-items-center gap-1">
-                <i class="bi bi-star-fill text-warning"></i>
-                {% if q['rate'] %}
-                  <span class="fw-semibold">{{ q['rate']|near }}</span>
-                  <span class="text-muted small">({{ q['reviews'] }})</span>
-                {% else %}
-                  <span class="fw-semibold">New</span>
-                {% endif%}
-              </div>
+
+            <div class="d-flex align-items-center gap-1">
+              <i class="bi bi-star-fill text-warning"></i>
+              {% if q['rate'] %}
+                <span class="fw-bold text-dark">{{ q['rate']|near }}</span>
+                <span class="text-muted small">({{ q['reviews'] }})</span>
+              {% else %}
+                <span class="fw-bold text-dark">New</span>
+              {% endif%}
             </div>
           </div>
 
           {% if q['status'] == 'active' %}
-            <div class="row g-2 mt-2">
+            <div class="row g-2 mb-3">
               <div class="col-4">
-                <div class="bg-light rounded-3 p-2 text-center">
+                <div class="metric-cell rounded-3 p-2 text-center">
                   <i class="bi bi-people-fill text-primary d-block mb-1"></i>
-                  <span class="fw-bold">{{ q['waiting'] }}</span>
-                  <div class="text-muted" style="font-size: 0.7rem;">people waiting</div>
+                  <span class="fw-bold text-dark fs-6">{{ q['waiting'] }}</span>
+                  <div class="text-muted" style="font-size: 0.72rem;">waiting</div>
                 </div>
               </div>
               <div class="col-4">
-                <div class="bg-light rounded-3 p-2 text-center">
-                  <i class="bi bi-clock text-warning d-block mb-1"></i>
-                  {% if q['est'] %}
-                    <span class="fw-bold">~{{ q['est']|near }} min</span>
-                  {% else %}
-                    <span class="fw-bold"> Soon </span>
-                  {% endif%}
-                  <div class="text-muted" style="font-size: 0.7rem;">estimated wait</div>
+                <div class="metric-cell rounded-3 p-2 text-center">
+                  <i class="bi bi-clock-history text-accent d-block mb-1"></i>
+                  <span class="fw-bold text-dark fs-6">{{ ('~' ~ q['est']|near ~ ' min') if q['est'] else 'Soon' }}</span>
+                  <div class="text-muted" style="font-size: 0.72rem;">wait time</div>
                 </div>
               </div>
               <div class="col-4">
-                <div class="bg-light rounded-3 p-2 text-center">
-                  <i class="bi bi-hourglass-split text-secondary d-block mb-1"></i>
-                  {% if q['avg'] %}
-                    <span class="fw-bold">{{ q['avg']|near }} min</span>
-                  {% else %}
-                    <span class="fw-bold"> Calculating... </span>
-                  {% endif%}
-                  <div class="text-muted" style="font-size: 0.7rem;">avg service</div>
+                <div class="metric-cell rounded-3 p-2 text-center">
+                  <i class="bi bi-hourglass-split text-muted d-block mb-1"></i>
+                  <span class="fw-bold text-dark fs-6">{{ (q['avg']|near ~ ' min') if q['avg'] else '--' }}</span>
+                  <div class="text-muted" style="font-size: 0.72rem;">avg pace</div>
                 </div>
               </div>
             </div>
-            {% if q['ago'] %}
-              <div class="d-flex align-items-center gap-1 mt-2 small text-secondary">
-                <span class="rounded-circle bg-success" style="width: 7px; height: 7px;"></span>
-                Now serving • started {{ q['ago']|near }} min ago
-              </div>
-            {% elif q['break_time'] and (q['break_time'] | int) >= 5 %}
-            <!-- TODO (in python) you should do check in prov inseat for breaks take more than 5m in shifts without callNext -->
-              <div class="d-flex align-items-center gap-1 mt-2 small text-warning">
-                <span class="rounded-circle bg-warning" style="width: 7px; height: 7px;"></span>
-                On a short break • idle for {{ q['break_time']|near }} min
-              </div>
-            {% else %}
-              <div class="d-flex align-items-center gap-1 mt-2 small text-muted">
-                <span class="rounded-circle bg-secondary" style="width: 7px; height: 7px;"></span>
-                Available • Ready for next customer
-              </div>
-            {% endif %}
-            {% if q['status'] == 'active' %}
-              <form action="/customer/join/{{ q['queue_id'] }}" method="POST" class="mt-2">
-                <button type="submit" class="btn btn-primary w-100 rounded-3">
-                  <i class="bi bi-people me-1"></i> Join Queue
-                </button>
-              </form>
-            {% else %}
-              <div class="bg-light rounded-3 p-2 mt-2 text-center text-muted small">
-                <i class="bi bi-hourglass-bottom"></i> Closing soon — not accepting new customers
-              </div>
-              <button type="button" class="btn btn-secondary w-100 rounded-3 mt-2" disabled>
-                Not available
+
+            <!-- Activity Status -->
+            <div class="d-flex align-items-center justify-content-between mb-3 px-1 small">
+              {% if q['ago'] %}
+                <div class="d-flex align-items-center gap-2 text-success">
+                  <span class="status-indicator bg-success"></span>
+                  <span>Now serving • started {{ q['ago']|near }}m ago</span>
+                </div>
+              {% elif q['break_time'] and (q['break_time'] | int) >= 5 %}
+                <div class="d-flex align-items-center gap-2 text-warning">
+                  <span class="status-indicator bg-warning"></span>
+                  <span>Short break • {{ q['break_time']|near }}m</span>
+                </div>
+              {% else %}
+                <div class="d-flex align-items-center gap-2 text-muted">
+                  <span class="status-indicator bg-secondary"></span>
+                  <span>Ready for next customer</span>
+                </div>
+              {% endif %}
+            </div>
+
+            <form action="/customer/join/{{ q['queue_id'] }}" method="POST" class="m-0">
+              <button type="submit" class="btn btn-join w-100 rounded-pill py-2 fw-semibold">
+                <i class="bi bi-plus-lg me-1"></i> Join Queue
               </button>
-            {% endif %}
+            </form>
           {% else %}
-            <div class="bg-light rounded-3 p-2 mt-2 text-center text-muted small">
-              <i class="bi bi-circle"></i> Currently closed
+            <div class="metric-cell rounded-3 p-3 my-2 text-center text-muted small">
+              <i class="bi bi-lock me-1"></i> Counter currently closed
             </div>
-            <button type="button" class="btn btn-secondary w-100 rounded-3 mt-2" disabled>
-              Not available
+            <button type="button" class="btn btn-secondary w-100 rounded-pill py-2" disabled>
+              Not Available
             </button>
           {% endif %}
         </div>
       {% else %}
-        <div class="card border-0 shadow-sm rounded-4 p-5 text-center">
-          <i class="bi bi-people fs-1 text-muted mb-2"></i>
-          <h5 class="fw-bold">No active queues right now</h5>
-          <p class="text-muted mb-0">Please check back later</p>
+        <div class="card border-0 shadow-sm rounded-4 p-5 text-center bg-white">
+          <i class="bi bi-people fs-1 text-muted mb-2 opacity-50"></i>
+          <h5 class="fw-bold text-dark">No active queues right now</h5>
+          <p class="text-muted small mb-0">Please check back later or choose another service.</p>
         </div>
       {% endfor %}
     </div>
@@ -231,18 +240,12 @@ document.querySelectorAll(".sort-btn").forEach(btn => {
     const cards = Array.from(container.querySelectorAll(".provider-card"));
     cards.sort((a, b) => {
       if (sortBy === "fastest") {
-        console.log(a)
-        console.log(b)
-        console.log(parseFloat(a.dataset.est) - parseFloat(b.dataset.est))
-        return parseFloat(a.dataset.est) - parseFloat(b.dataset.est);
+        return parseFloat(a.dataset.est || 0) - parseFloat(b.dataset.est || 0);
       } else {
-        console.log(a)
-        console.log(b)
-        console.log(parseFloat(a.dataset.rate) - parseFloat(b.dataset.rate))
-        return parseFloat(b.dataset.rate) - parseFloat(a.dataset.rate);
+        return parseFloat(b.dataset.rate || 0) - parseFloat(a.dataset.rate || 0);
       }
     });
-    container.innerHTML = ''
+    container.innerHTML = '';
     cards.forEach(card => container.appendChild(card));
   });
 });

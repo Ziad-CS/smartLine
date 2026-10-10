@@ -16,6 +16,19 @@ if (menu && menuButton) {
     }
   });
 }
+window.addEventListener(
+  "keydown",
+  (event) => {
+    if (event.key === "Escape") {
+      
+      if (document.querySelector(".modal.show")) return;
+      event.stopPropagation();
+      event.preventDefault();
+      window.history.back();
+    }
+  },
+  true,
+);
 // ! Error message toast
 
 function showToast(message, type="error") {
@@ -293,16 +306,16 @@ function manageLocationMenu() {
             return response.text(); // قراءة الـ String القادم من السيرفر
           })
           .then((newUrl) => {
-            let url;
+            // let url;
             if (newUrl) {
-              const countryMatches = newUrl.match(/country=/g);
-              if (countryMatches && countryMatches.length >= 2) {
-                url = newUrl.replace(/country=[^&]*&/, "");
-              }
-              else {
-                url = newUrl;
-              }
-              window.location.href = url.trim();
+              // const countryMatches = newUrl.match(/country=/g);
+              // if (countryMatches && countryMatches.length >= 2) {
+              //   url = newUrl.replace(/country=[^&]*&/, "");
+              // }
+              // else {
+              //   url = newUrl;
+              // }
+              window.location.href = newUrl.trim();
             }
           })
           .catch((error) => {
@@ -835,10 +848,10 @@ if (startQueue) {
     if (!service.value) {
       e.preventDefault();
       e.stopPropagation();
+      showError(service, "Please select a service before starting the queue.");
+      service.classList.add("is-invalid", "shake-error");
+      setTimeout(() => service.classList.remove("shake-error"), 300);
     }
-    showError(service, "Please select a service before starting the queue.");
-    service.classList.add("is-invalid", "shake-error");
-    setTimeout(() => service.classList.remove("shake-error"), 300);
   });
   service.addEventListener("change", () => {
     if (service.value) {

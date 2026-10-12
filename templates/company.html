@@ -1,0 +1,339 @@
+{% extends "layout.html" %}
+
+{% block title %}
+  Company Settings
+{% endblock %}
+
+{% block main %}
+  <div class="container-fluid px-3 px-md-4 px-xl-5 py-4">
+
+    <!-- Page Header -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+      <div class="d-flex align-items-center gap-3">
+        <div class="rounded-4 d-flex align-items-center justify-content-center flex-shrink-0 bg-primary-subtle text-primary" style="width: 60px; height: 60px;">
+          <i class="bi bi-building-gear fs-2"></i>
+        </div>
+        <div>
+          <h1 class="h2 fw-bold mb-1">Company Settings</h1>
+          <p class="text-secondary mb-0">Manage your company profile, services, location, and working hours.</p>
+        </div>
+      </div>
+      <a href="/profile" class="btn btn-outline-secondary align-self-start align-self-md-center">
+        <i class="bi bi-arrow-left me-2"></i>Back to Profile
+      </a>
+    </div>
+
+    <!-- Company Summary -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+      <div class="card-body p-3 p-md-4">
+        <div class="d-flex flex-column flex-sm-row align-items-sm-center gap-3">
+          <div class="rounded-4 d-flex align-items-center justify-content-center flex-shrink-0 text-white" style="width: 72px; height: 72px; background-color: #0b2545;">
+            <i class="bi bi-buildings fs-1"></i>
+          </div>
+          <div class="flex-grow-1 min-w-0">
+            <h2 class="h4 fw-bold mb-2 text-break">{{ managerdetails.get('name', '') }}</h2>
+            <div class="d-flex flex-wrap gap-2 align-items-center">
+              <span class="badge rounded-pill bg-primary-subtle text-primary px-3 py-2">
+                {{ managerdetails.get('cat', '') | replace('_', ' ') | title }}
+              </span>
+              <span class="small text-secondary">
+                <i class="bi bi-geo-alt me-1"></i>{{ managerdetails.get('city', '') }}, {{ managerdetails.get('country', '') | title }}
+              </span>
+            </div>
+          </div>
+          <div class="text-sm-end">
+            <div class="h4 fw-bold mb-0">{{ managerdetails.get('services', []) | length }}</div>
+            <div class="small text-secondary">Company Services</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Company Settings Form -->
+    <form action="/manager/profile/update-info/" method="POST" id="company_edits">
+
+      <!-- Business Information -->
+      <section class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-body p-3 p-md-4">
+          <div class="d-flex align-items-center gap-3 mb-4">
+            <div class="rounded-3 bg-primary-subtle text-primary d-flex align-items-center justify-content-center flex-shrink-0" style="width: 44px; height: 44px;">
+              <i class="bi bi-building fs-4"></i>
+            </div>
+            <div>
+              <h2 class="h5 fw-bold mb-1">Business Information</h2>
+              <p class="small text-secondary mb-0">Set the public name and category of your company.</p>
+            </div>
+          </div>
+
+          <div class="row g-3">
+            <div class="mb-3">
+              <label for="company_name" class="form-label small fw-semibold text-muted">
+                Company Name
+              </label>
+              <input
+                type="text"
+                name="company_name"
+                id="cName"
+                class="form-control"
+                placeholder="e.g. SmartTech Solutions"
+                required
+                minlength="3"
+                maxlength="50"
+              >
+            </div>
+
+            <div class="mb-3">
+              <label for="regCategory" class="form-label small fw-semibold text-muted">
+                Category
+              </label>
+
+              <select class="form-select bg-light border-0" name="category" id="cCategory">
+                <option value="clinics" selected>Clinics & Healthcare</option>
+                <option value="banks">Banks & Finance</option>
+                <option value="government_offices">Government Offices</option>
+                <option value="telecom">Telecom & Customer Service</option>
+                <option value="edu">Education</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+
+            <div class="col-12">
+              <label for="cDescription" class="form-label fw-semibold">Description</label>
+              <textarea name="description" rows="3" class="form-control custom-input textarea-comp"
+                        placeholder="Brief overview of services provided..."
+                        maxlength="150" minlength="10" id="cDescription">{{ managerdetails.description if managerdetails else '' }}</textarea>
+              <div class="form-text">Use a short description to help customers understand your business.</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Location & Contact -->
+      <section class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-body p-3 p-md-4">
+          <div class="d-flex align-items-center gap-3 mb-4">
+            <div class="rounded-3 bg-primary-subtle text-primary d-flex align-items-center justify-content-center flex-shrink-0" style="width: 44px; height: 44px;">
+              <i class="bi bi-geo-alt fs-4"></i>
+            </div>
+            <div>
+              <h2 class="h5 fw-bold mb-1">Location & Contact</h2>
+              <p class="small text-secondary mb-0">Help customers find and contact your company.</p>
+            </div>
+          </div>
+
+          <div class="row g-3">
+                        <button
+              type="button"
+              class="btn btn-light btn-sm border d-flex align-items-center gap-2 text-secondary fw-semibold mb-3 rounded-3"
+              data-bs-toggle="modal"
+              data-bs-target="#locationModal"
+              id="openModel"
+            >
+              <i class="bi bi-geo-alt"></i>
+              <span id="currentLocationLabel" class="text-capitalize">
+                {{ session.get("city", "Cairo") }}, {{ session.get("country", "Egypt") }}
+              </span>
+              <i class="bi bi-caret-down-fill"></i>
+            </button>
+
+            <div class="modal fade" id="locationModal" tabindex="-1"
+                aria-labelledby="locationModalLabel" aria-hidden="true">
+              <div class="modal-dialog modal-dialog-centered modal-sm">
+                <div class="modal-content border-0 shadow-lg rounded-4">
+
+                  <div class="modal-header border-0 pb-0">
+                    <h6 class="modal-title fw-bold" id="locationModalLabel">
+                      Select Your Location
+                    </h6>
+                    <button type="button" class="btn-close"
+                            data-bs-dismiss="modal" aria-label="Close"></button>
+                  </div>
+
+                  <div class="modal-body">
+                    <div class="mb-3">
+                      <label for="countryList"
+                            class="form-label small fw-semibold text-secondary mb-1">
+                        Country
+                      </label>
+                      <select id="countryList" name="country"
+                              placeholder="Search country..."
+                              class="form-select form-select-lg custom-input"
+                              data-my-country="{{ session.get('country', 'egypt') | lower }}">
+                        {% for country in countries %}
+                          <option value="{{ country['name'] | lower }}"
+                            {% if session.get('country', 'egypt') | lower == country['name'] | lower %}selected{% endif %}>
+                            {{ country['name'] }}
+                          </option>
+                        {% endfor %}
+                      </select>
+                    </div>
+
+                    <div class="mb-3">
+                      <label for="citiesList"
+                            class="form-label small fw-semibold text-secondary mb-1">
+                        City
+                      </label>
+                      <select id="citiesList" name="city"
+                              placeholder="Search city..."
+                              class="form-select form-select-lg custom-input"
+                              data-my-city="{{ session.get('city', 'cairo') | lower }}">
+                        {% for city in cities %}
+                          <option value="{{ city | lower }}"
+                            {% if session.get('city', 'cairo') | lower == city | lower %}selected{% endif %}>
+                            {{ city }}
+                          </option>
+                        {% endfor %}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div class="modal-footer border-0 pt-0">
+                    <button type="button" id="applyLocationBtn"
+                            class="btn btn-primary w-100 rounded-3 py-2 fw-semibold">
+                      Apply Location
+                    </button>
+                  </div>
+
+                </div>
+              </div>
+            </div>
+
+            <div class="col-12 col-md-7">
+              <label for="cAddress" class="form-label fw-semibold">Address</label>
+              <input type="text" name="address" id="cAddress" class="form-control form-control-lg custom-input"
+                    value="{{ managerdetails.address if managerdetails else '' }}"
+                    placeholder="e.g. 12 El-Nasr St, Maadi">
+            </div>
+
+            <div class="col-12 col-md-5">
+              <label for="cPhone" class="form-label fw-semibold">Phone</label>
+              <input type="tel" name="phone" id="cPhone" class="form-control form-control-lg custom-input"
+                    value="{{ managerdetails.phone if managerdetails else '' }}"
+                    placeholder="e.g. 02-12345678">
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Company Services -->
+      <section class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-body p-3 p-md-4">
+          <div class="d-flex align-items-center gap-3 mb-4">
+            <div class="rounded-3 bg-primary-subtle text-primary d-flex align-items-center justify-content-center flex-shrink-0" style="width: 44px; height: 44px;">
+              <i class="bi bi-list-check fs-4"></i>
+            </div>
+            <div>
+              <h2 class="h5 fw-bold mb-1">Company Services</h2>
+              <p class="small text-secondary mb-0">Manage the services customers can select when joining a queue.</p>
+            </div>
+          </div>
+
+          <label for="serviceInput" class="form-label fw-semibold">Add a Service</label>
+          <div class="input-group input-group-lg mb-3 shadow-sm rounded-3 overflow-hidden">
+            <input type="text" id="serviceInput" class="form-control border-end-0"
+                  placeholder="e.g. General Consultation, Cashier..." aria-label="Add service">
+            <button class="btn btn-primary bg-navy border-start-0 px-4" type="button"
+                    id="addServiceBtn" title="Add Service">
+              <i class="bi bi-check-lg fs-5"></i>
+            </button>
+          </div>
+
+          <div id="servicesChipsContainer" class="d-flex flex-wrap gap-2 pt-1">
+            {% if managerdetails['services'] %}
+              {% for s in managerdetails['services'] %}
+                <span class="badge d-inline-flex align-items-center gap-2 px-3 py-2 rounded-pill bg-light-blue text-navy border border-subtle fw-medium shadow-sm">
+                  <span style="color: #0b2545; font-size: 1em;">{{ s['name'] }}</span>
+                  <input type="hidden" name="services[]" value="{{ s['id'] }}">
+                  <i class="bi bi-x-circle-fill text-secondary cursor-pointer hover-danger services" role="button" aria-label="Remove {{ s['name'] }}"></i>
+                </span>
+              {% endfor %}
+            {% endif %}
+          </div>
+
+          <div class="form-text mt-3">
+            Add or remove services using the controls above. Existing services are submitted with their IDs.
+          </div>
+        </div>
+      </section>
+
+      <!-- Business Hours -->
+      <section class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-body p-3 p-md-4">
+          <div class="d-flex align-items-center gap-3 mb-4">
+            <div class="rounded-3 bg-primary-subtle text-primary d-flex align-items-center justify-content-center flex-shrink-0" style="width: 44px; height: 44px;">
+              <i class="bi bi-clock fs-4"></i>
+            </div>
+            <div>
+              <h2 class="h5 fw-bold mb-1">Business Hours</h2>
+              <p class="small text-secondary mb-0">Set the hours during which your business operates.</p>
+            </div>
+          </div>
+
+          <div class="row g-3 mb-3">
+            <div class="col-12 col-sm-6">
+              <label for="cOpen" class="form-label fw-semibold">Opening Time</label>
+              <input type="time" name="opening_time" id="cOpen" class="form-control form-control-lg custom-input dark-close"
+                {% if managerdetails and managerdetails.opening == '00:00' and managerdetails.closing == '00:00' %}
+                  value="" disabled
+                {% else %}
+                  value="{{ (managerdetails.opening if managerdetails and managerdetails.opening else '09:00') | trim }}"
+                {% endif %}>
+            </div>
+
+            <div class="col-12 col-sm-6">
+              <label for="cClose" class="form-label fw-semibold">Closing Time</label>
+              <input type="time" name="closing_time" id="cClose" class="form-control form-control-lg custom-input dark-close"
+                {% if managerdetails and managerdetails.opening == '00:00' and managerdetails.closing == '00:00' %}
+                  value="" disabled
+                {% else %}
+                  value="{{ (managerdetails.closing if managerdetails and managerdetails.opening else '17:00') | trim }}"
+                {% endif %}>
+            </div>
+          </div>
+
+          <div class="mt-2 mb-3">
+            <div class="form-check form-switch custom-switch-box d-flex align-items-center gap-3 border rounded-3 p-3 m-0">
+              <input class="form-check-input m-0 flex-shrink-0" type="checkbox" role="switch"
+                    id="is_24_hours" name="is_24_hours"
+                {% if managerdetails and managerdetails.opening == '00:00' and managerdetails.closing == '00:00' %}checked{% endif %}>
+              <label class="form-check-label small fw-semibold text-secondary mb-0 flex-grow-1" for="is_24_hours">
+                Open 24 Hours
+              </label>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Form Actions -->
+      <div class="d-flex flex-column flex-sm-row justify-content-end gap-2 mb-4">
+        <a href="/profile" class="btn btn-light border px-4 py-2">Cancel</a>
+        <button type="submit" class="btn btn-primary-navy px-4 py-2 fw-semibold text-white" id="save_company_edits">
+          <i class="bi bi-check2-circle me-2"></i>Save Changes
+        </button>
+      </div>
+
+    </form>
+  </div>
+{% endblock %}
+{% block js %}
+<script>
+  const countryEl = document.getElementById("countryList");
+  const cityEl = document.getElementById("citiesList");
+
+  if (countryEl && cityEl) {
+    var settings = {
+      create: false,
+      maxOptions: null,
+      sortField: {
+        field: "text",
+        direction: "asc",
+      },
+    };
+    const tomCount = new TomSelect("#countryList", settings);
+    const tomCit = new TomSelect("#citiesList", settings);
+    const count = tomCount.getValue()
+    if (count)
+      renderCities(count)
+  }
+</script>
+{% endblock%}

@@ -21,7 +21,7 @@
   /* * --sub-bg: #EAF6F0; --sub-bg-light: #F4FCE2; */
 
   /* ---------- Status ---------- */
-  --success: #16a34a;
+  --success: #2fc23d99;
   --success-bg: #dcfce7;
   --warning: #f59e0b;
   --warning-bg: #fef3c7;
@@ -92,10 +92,6 @@ body {
   background: #1a38b3;
   color: #fff;
 }
-/* 
-nav {
-  background-color: var(--subBg );
-} */
 main {
   background-color: var(--bg-body);
   display: flex;
@@ -105,51 +101,7 @@ main {
   position: relative;
   width: 100vw;
 }
-/* .topbar {
-  position: sticky !important;
-  top: 0;
-  z-index: 999999;
-  padding: 10px 20px 4px 0px !important;
-  font-weight: 600;
-  font-size: 1em;
-}
-nav .container-fluid {
-  position: relative;
-}
-.nav-cont {
-  justify-content: space-between;
-}
-#navbar {
-  flex-grow: 0;
-}
-.logo {
-  width: auto;
-  height: 50px;
-}
-.navbar-brand {
-  padding: 0 !important;
-}
-.non-collapse {
-  display: none;
-}
-.menu-icon {
-  display: block;
-  height: 50px;
-  width: 50px;
-  margin: 5px;
-  padding: 12px 8px;
-  background-color: var(--main-color);
-  border-radius: 15px;
-}
-.sm-line {
-  display: block;
-  margin: 4px 5px;
-  width: 25px;
-  background-color: #fff;
-  padding: 1.5px;
-  border-radius: 100px;
-} */
-/* * checkbox in profile manage company*/
+/* checkbox in profile manage company */
 .custom-switch-box {
   display: flex !important;
   align-items: center;
@@ -750,9 +702,78 @@ nav .container-fluid {
     font-size: 0.9rem;
   }
 }
-/* ========== My Queue Customer ========== */
+/* ---------- My Queue Customer ---------- */
 
-/* ---------- Customer History ---------- */
+/* ========== My Queue Customer ========== */
+/* ---------- Provider Queue managment ---------- */
+#serving,
+#waiting {
+    min-width: 0;
+}
+
+#serving > div {
+    margin-bottom: 1rem;
+}
+
+#serving > div:last-child {
+    margin-bottom: 0;
+}
+
+#waiting .table {
+    min-width: 650px;
+}
+
+#waiting td,
+#waiting th {
+    padding: 0.85rem;
+    vertical-align: middle;
+}
+
+#waiting .customer-container img {
+    object-fit: cover;
+}
+
+#waiting .customer-container td {
+    white-space: nowrap;
+}
+
+#waiting .customer-container td:nth-child(2) {
+    white-space: normal;
+    min-width: 170px;
+}
+
+#serving .btn,
+#waiting .btn {
+    white-space: nowrap;
+}
+
+.stat-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.15rem;
+}
+/* ========== Provider Queue managment ========== */
+/* ---------- profile ---------- */
+.custom-switch-box {
+    padding: 0.875rem 1rem !important;
+    min-height: 58px;
+}
+
+.custom-switch-box .form-check-input {
+    margin: 0 !important;
+    float: none;
+    flex-shrink: 0;
+    cursor: pointer;
+}
+
+.custom-switch-box .form-check-label {
+    cursor: pointer;
+    line-height: 1.5;
+}
+/* ========== profile ========== */
+
+
+
 .my-history-page {
   --history-primary: var(--main-color);
   --history-primary-light: var(--main-color-light);

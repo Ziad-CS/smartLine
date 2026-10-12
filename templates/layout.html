@@ -179,7 +179,6 @@
                   <li class="nav-item"><a class="nav-link rounded-3 fw-medium" href="/customer/history/{{ session.get('user_id') }}">History</a></li>
                 {% endif %}
                 <li class="nav-item"><a class="nav-link rounded-3 fw-medium" href="#">How it works</a></li>
-                <li class="nav-item"><a class="nav-link rounded-3 fw-medium" href="#">Contact</a></li>
               </ul>
             </div>
           {% endif %}
@@ -198,16 +197,16 @@
       <nav class="nav nav-pills flex-column gap-1 p-3">
         {% if role == "manager" %}
           {% set items = [
-            ('Dashboard', 'bi-house',        '#'),
+            ('Dashboard', 'bi-house',        '/manager/dashboard'),
             ('Providers', 'bi-people',       '/manager/providers'),
             ('Queues',    'bi-people-fill',  '/manager/queues'),
-            ('Reports',   'bi-bar-chart',    '#'),
+            ('Reports',   'bi-bar-chart',    '/manager/Reports'),
             ('Company',   'bi-gear',         '/manager/company'),
             ('Profile',   'bi-person',       '/profile')
           ] %}
         {% else %}
           {% set items = [
-            ('Dashboard', 'bi-house',          '#'),
+            ('Dashboard', 'bi-house',          '/provider/dashboard'),
             ('My Queue',  'bi-people-fill',    '/provider/Queue'),
             ('History',   'bi-clock-history',  '/providers/history/' ~ prov_id),
             ('Profile',   'bi-person',         '/profile')
@@ -245,6 +244,7 @@
       <div id="toastContainer"></div>
     </main>
     <footer></footer>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="{{ url_for('static', filename='layout.js') }}"></script>
     <script src="{{ url_for('static', filename='bootstrap.js') }}"></script>
     <script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>

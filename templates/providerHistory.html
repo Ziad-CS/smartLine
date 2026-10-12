@@ -1,5 +1,16 @@
-
-
+{% macro get_empty_period_label(period) %}
+  {% if period == 'all' %}
+    Overall record
+  {% elif period == 'week' %}
+    New week
+  {% elif period == 'month' %}
+    New month
+  {% elif period == 'year' %}
+    New year
+  {% else %}
+    New shift
+  {% endif %}
+{% endmacro %}
 {% extends "layout.html" %}
 
 {% block title %}
@@ -7,161 +18,1123 @@
 {% endblock %}
 
 {% block main %}
-  {% if data.is_manager_view %}
-    <img src="https://ui-avatars.com/api/?name={{ data['provider']['name'] }}&background=0D6EFD&color=fff" alt="Avatar" class="rounded-circle" width="64">
-    <div>
-      <p> Name = {{  data['provider']['name'] }} </p>
-      <p> rate = {{ data['provider']['rating'] }} </p>
-      <p> reviews = {{ data['provider']['reviews'] }} </p>
-      <p> email = {{ data['provider']['email'] }} </p>
-      <p> joined = {{ data['provider']['joined'] }} </p>
-    </div>
-    <div>
-      <p>is active = {{data.live_data.status}} </p>
-      {% if data.live_data.serving_info %}
-        <div>
-          <p> name = {{ data.live_data.serving_info.name }} </p>
-          <p> type = {{ data.live_data.serving_info.type }} </p>
-          <p> started_ago = {{ data.live_data.serving_info.started_ago }} </p>
+  <div class="container-fluid px-3 px-md-4 px-xl-5 py-4">
+
+    {% if data.is_manager_view %}
+
+      <!-- Page Header -->
+      <div class="d-flex align-items-center gap-3 mb-4">
+        <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+            style="width: 56px; height: 56px; background-color: #e7efff; color: #0b2545;">
+          <i class="bi bi-clock-history fs-3"></i>
         </div>
-      {% else %}
-      {% endif%}
-      {% if data.live_data.up_next %}
         <div>
-          <p> UP NEXT</p>
-          {% for witing in data.live_data.up_next %}
-            <div>
-              <p> UP NEXT name = {{ witing.name }} </p>
-              <p> UP NEXT type = {{ witing.type }} </p>
-              <p> UP NEXT waitTime = {{ witing.waited_min | near }} </p>
-              <p> UP NEXT est = {{ witing.estimated_min | near }} </p>
+          <h1 class="h2 fw-bold mb-1" style="color: #0b2545;">Provider History</h1>
+          <p class="text-secondary mb-0">Service history and performance overview</p>
+        </div>
+      </div>
+
+      <!-- Provider Profile -->
+      <div class="card border rounded-4 shadow-sm mb-4">
+        <div class="card-body p-3 p-md-4">
+          <div class="d-flex flex-column flex-sm-row align-items-sm-center gap-3">
+
+            <img
+              src="https://ui-avatars.com/api/?name={{ data['provider']['name'] }}&background=0b2545&color=fff"
+              alt="Avatar"
+              class="rounded-circle flex-shrink-0"
+              width="80"
+              height="80"
+            >
+
+            <div class="flex-grow-1">
+              <h2 class="h3 fw-bold mb-2" style="color: #0b2545;">
+                {{ data['provider']['name'] }}
+              </h2>
+
+              <div class="d-flex flex-wrap align-items-center gap-3 mb-2">
+                <span class="d-flex align-items-center gap-1">
+                  <i class="bi bi-star-fill text-warning"></i>
+                  <strong>{{ data['provider']['rating'] | near }}</strong>
+                </span>
+                <span class="text-secondary small">
+                  ({{ data['provider']['reviews'] }} reviews)
+                </span>
+              </div>
+
+              <div class="d-flex flex-column flex-sm-row flex-wrap gap-2 gap-sm-3 text-secondary small">
+                <span class="text-break">
+                  <i class="bi bi-envelope me-1"></i>
+                  {{ data['provider']['email'] }}
+                </span>
+                <span>
+                  <i class="bi bi-calendar3 me-1"></i>
+                  Joined {{ data['provider']['joined'] }}
+                </span>
+              </div>
             </div>
-          {% endfor %}
+
+          </div>
         </div>
-      {% else %}
-      {% endif%}
-    </div>
-    <div>
-      <form action="/providers/history/{{ data.provider.id }}" method="get" id="periodFrom">
-        <select name="period" id="period">
-          <option value="all" {% if not data.period or data.period == 'all' %} selected {% endif %}> All</option>
-          <option value="today" {% if data.period == 'today' %} selected {% endif %}> Today </option>
-          <option value="week" {% if data.period == 'week' %} selected {% endif %}> Week </option>
-          <option value="month" {% if data.period == 'month' %} selected {% endif %}> Month </option>
-          <option value="year" {% if data.period == 'year' %} selected {% endif %}> Year </option>
-        </select>
-      </form>
-      <div> Choosen = {{ data.period }}</div>
+      </div>
 
-      <p> total_served = {{ data.stats.total_served }} </p>
-      <span class="text-muted"> {{ data.stats.served_compare | near }} </span>
-      
-      <p> avg_service_time = {{ data.stats.avg_service_time }} </p>
-      <span class="text-muted"> {{ data.stats.avg_compare | near }} </span>
+      <!-- Live Queue Status -->
+      <div class="card border rounded-4 shadow-sm mb-4">
+        <div class="card-body p-3 p-md-4">
 
-      <p>avg_rating = {{ data.stats.avg_rating }} </p>
-      <span class="text-muted fs-6">reviews = {{ data.stats.reviews }} </span>
-      <span class="text-muted fs-5"> {{ data.stats.rateCompare | near }} </span>
-
-      <p> work_hours = {{ data.stats.work_hours }} </p>
-      <span class="text-muted"> {{ data.stats.workHoursCompare | near }} </span>
-
-    </div>
-    <div>
-      <div>1 : {{ data.rating_breakdown[0] }}</div>
-      <div>2 : {{ data.rating_breakdown[1] }}</div>
-      <div>3 : {{ data.rating_breakdown[2] }}</div>
-      <div>4 : {{ data.rating_breakdown[3] }}</div>
-      <div>5 : {{ data.rating_breakdown[4] }}</div>
-    </div>
-    <div>
-      {% for history in data.history %}
-        <div>
-          <p> customer_name : {{ history.customer_name }} </p>
-          <p> is_guest : {{ history.is_guest }} </p>
-          <p> datetime : {{ history.datetime }} </p>
-          <p> duration : {{ history.duration }} </p>
-          <p> stars : {{ history.stars }} </p>
-        </div>
-      {% endfor %}
-    </div>
-  {% else %}
-    <img src="https://ui-avatars.com/api/?name={{ data['provider']['name'] }}&background=0D6EFD&color=fff" alt="Avatar" class="rounded-circle" width="64">
-    <div>
-      <p> Name = {{  data['provider']['name'] }} </p>
-      <p> rate = {{ data['provider']['rating'] }} </p>
-      <p> reviews = {{ data['provider']['reviews'] }} </p>
-      <p> email = {{ data['provider']['email'] }} </p>
-      <p> joined = {{ data['provider']['joined'] }} </p>
-    </div>
-    <div>
-      <p>is active = {{data.live_data.status}} </p>
-      {% if data.live_data.serving_info %}
-        <div>
-          <p> name = {{ data.live_data.serving_info.name }} </p>
-          <p> type = {{ data.live_data.serving_info.type }} </p>
-          <p> started_ago = {{ data.live_data.serving_info.started_ago }} </p>
-        </div>
-      {% else %}
-      {% endif%}
-      {% if data.live_data.up_next %}
-        <div>
-          <p> UP NEXT</p>
-          {% for witing in data.live_data.up_next %}
+          <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
             <div>
-              <p> UP NEXT name = {{ witing.name }} </p>
-              <p> UP NEXT type = {{ witing.type }} </p>
-              <p> UP NEXT waitTime = {{ witing.waited_min | near }} </p>
-              <p> UP NEXT est = {{ witing.estimated_min | near }} </p>
+              <h2 class="h5 fw-bold mb-1" style="color: #0b2545;">
+                <i class="bi bi-activity me-2"></i>Live Queue Status
+              </h2>
+              <p class="text-secondary small mb-0">Current provider activity</p>
             </div>
-          {% endfor %}
+
+            <span class="badge rounded-pill border px-3 py-2 bg-light text-dark">
+              {{ data.live_data.status }}
+            </span>
+          </div>
+
+          {% if data.live_data.serving_info %}
+            <div class="border rounded-3 p-3 mb-4">
+              <div class="d-flex align-items-center gap-2 mb-3">
+                <i class="bi bi-person-check fs-5" style="color: #0b2545;"></i>
+                <h3 class="h6 fw-bold mb-0">Now Serving</h3>
+              </div>
+
+              <div class="d-flex align-items-center gap-3">
+                <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                    style="width: 48px; height: 48px; background-color: #e7efff; color: #0b2545;">
+                  <i class="bi bi-person-fill fs-4"></i>
+                </div>
+
+                <div class="flex-grow-1">
+                  <h4 class="h6 fw-bold mb-1">{{ data.live_data.serving_info.name }}</h4>
+                  <p class="small text-secondary mb-2">{{ data.live_data.serving_info.type }}</p>
+                  <span class="badge rounded-pill bg-light text-dark border">
+                    <i class="bi bi-clock me-1"></i>
+                    Started {{ data.live_data.serving_info.started_ago | near }} min ago
+                  </span>
+                </div>
+              </div>
+            </div>
+          {% else %}
+          {% endif %}
+
+          {% if data.live_data.up_next %}
+            <div>
+              <div class="d-flex align-items-center gap-2 mb-3">
+                <i class="bi bi-people fs-5" style="color: #0b2545;"></i>
+                <h3 class="h6 fw-bold mb-0">Up Next</h3>
+              </div>
+
+              <div class="row g-3">
+                {% for witing in data.live_data.up_next %}
+                  <div class="col-12 col-md-6 col-xl-4">
+                    <div class="h-100 border rounded-3 p-3">
+
+                      <div class="d-flex align-items-center gap-2 mb-3">
+                        <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                              style="width: 42px; height: 42px; background-color: #e7efff; color: #0b2545;">
+                          <i class="bi bi-person fs-5"></i>
+                        </div>
+
+                        <div class="flex-grow-1">
+                          <h4 class="h6 fw-bold mb-1">{{ witing.name }}</h4>
+                          <span class="small text-secondary">{{ witing.type }}</span>
+                        </div>
+                      </div>
+
+                      <div class="d-flex justify-content-between align-items-center gap-2 mb-2">
+                        <span class="small text-secondary">Waited</span>
+                        <span class="fw-semibold">{{ witing.waited_min | near }} min</span>
+                      </div>
+
+                      <div class="d-flex justify-content-between align-items-center gap-2">
+                        <span class="small text-secondary">Estimated wait</span>
+                        <span class="badge rounded-pill text-bg-primary">
+                          {{ witing.estimated_min | near }} min
+                        </span>
+                      </div>
+
+                    </div>
+                  </div>
+                {% endfor %}
+              </div>
+            </div>
+          {% else %}
+          {% endif %}
+
         </div>
-      {% else %}
-      {% endif%}
-    </div>
-    <div>
-      <form action="/providers/history/{{ prov_id }}" method="get" id="periodFrom">
-        <select name="period" id="period">
-          <option value="all" {% if not data.period or data.period == 'all' %} selected {% endif %}> All</option>
-          <option value="today" {% if data.period == 'today' %} selected {% endif %}> Today </option>
-          <option value="week" {% if data.period == 'week' %} selected {% endif %}> Week </option>
-          <option value="month" {% if data.period == 'month' %} selected {% endif %}> Month </option>
-          <option value="year" {% if data.period == 'year' %} selected {% endif %}> Year </option>
-        </select>
-      </form>
-      <div> Choosen = {{ data.period }}</div>
+      </div>
 
-      <p> total_served = {{ data.stats.total_served }} </p>
-      <span class="text-muted"> {{ data.stats.served_compare | near }} </span>
-      
-      <p> avg_service_time = {{ data.stats.avg_service_time }} </p>
-      <span class="text-muted"> {{ data.stats.avg_compare | near }} </span>
+      <!-- Performance Overview -->
+      <div class="card border rounded-4 shadow-sm mb-4">
+        <div class="card-body p-3 p-md-4">
 
-      <p>avg_rating = {{ data.stats.avg_rating }} </p>
-      <span class="text-muted fs-6">reviews = {{ data.stats.reviews }} </span>
-      <span class="text-muted fs-5"> {{ data.stats.rateCompare | near }} </span>
+          <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+            <div>
+              <h2 class="h5 fw-bold mb-1" style="color: #0b2545;">
+                <i class="bi bi-bar-chart-line me-2"></i>Performance Overview
+              </h2>
+              <p class="text-secondary small mb-0">
+                Statistics from completed services
+              </p>
+            </div>
 
-      <p> work_hours = {{ data.stats.work_hours }} </p>
-      <span class="text-muted"> {{ data.stats.workHoursCompare | near }} </span>
+            <form action="/providers/history/{{ data.provider.id }}" method="get"
+                  id="periodFrom" class="d-flex align-items-center gap-2">
+              <label for="period" class="small fw-semibold mb-0">Period</label>
+              <select name="period" id="period" class="form-select">
+                <option value="all" {% if not data.period or data.period == 'all' %} selected {% endif %}>All time</option>
+                <option value="today" {% if data.period == 'today' %} selected {% endif %}>Today</option>
+                <option value="week" {% if data.period == 'week' %} selected {% endif %}>This week</option>
+                <option value="month" {% if data.period == 'month' %} selected {% endif %}>This month</option>
+                <option value="year" {% if data.period == 'year' %} selected {% endif %}>This year</option>
+              </select>
+            </form>
+          </div>
 
-    </div>
-    <div>
-      <div>1 : {{ data.rating_breakdown[0] }}</div>
-      <div>2 : {{ data.rating_breakdown[1] }}</div>
-      <div>3 : {{ data.rating_breakdown[2] }}</div>
-      <div>4 : {{ data.rating_breakdown[3] }}</div>
-      <div>5 : {{ data.rating_breakdown[4] }}</div>
-    </div>
-    <div>
-      {% for history in data.history %}
+          <p class="small text-secondary mb-3">
+            Selected period:
+            <span class="badge rounded-pill bg-light text-dark border">
+              {{ data.period }}
+            </span>
+          </p>
+
+          <div class="row g-3">
+
+            <div class="col-12 col-sm-6 col-xl-3">
+              <div class="h-100 border rounded-3 p-3">
+                <div class="d-flex align-items-center gap-3 mb-3">
+                  <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                        style="width: 48px; height: 48px; background-color: #e7efff; color: #0b2545;">
+                    <i class="bi bi-people-fill fs-4"></i>
+                  </div>
+                  <div>
+                    <div class="h4 fw-bold mb-1">{{ data.stats.total_served }}</div>
+                    <div class="small text-secondary">Total Served</div>
+                  </div>
+                </div>
+                <!-- {% if data.stats.served_compare is not none %}
+                  {% if data.stats.served_compare > 0 %}
+                    <span class="stat-badge badge-up good badge rounded-pill text-bg-success-subtle text-success-emphasis" id="data.stats.served_compare">
+                      <i class="bi bi-arrow-up-short"></i> {{ data.stats.served_compare | near }}%
+                    </span>
+                  {% elif (not data.stats.served_compare or data.stats.served_compare | abs == 100) and not servedToDay %}
+                    <span class="stat-badge badge-up bg-warning-subtle badge rounded-pill text-warning-emphasis" id="data.stats.served_compare">
+                      New shift
+                    </span>
+                  {% else %}
+                    <span class="stat-badge badge-down bad badge rounded-pill text-bg-danger-subtle text-danger-emphasis" id="data.stats.served_compare">
+                      <i class="bi bi-arrow-down-short"></i> {{ data.stats.served_compare | abs | near }}%
+                    </span>
+                  {% endif %}
+                  <span class="small text-secondary ms-1">vs. previous period</span>
+                {% endif %} -->
+                {% if data.period != 'all' and data.stats.served_compare is not none %}
+                  {% if data.stats.served_compare > 0 %}
+                    <span class="stat-badge badge rounded-pill bg-success-subtle text-success d-inline-flex align-items-center px-2 py-1 fw-semibold" id="served_compare">
+                      <i class="bi bi-arrow-up-short fs-6 lh-1"></i> {{ data.stats.served_compare | near }}%
+                    </span>
+                  {% elif data.stats.served_compare < 0 %}
+                    <span class="stat-badge badge rounded-pill bg-danger-subtle text-danger d-inline-flex align-items-center px-2 py-1 fw-semibold" id="served_compare">
+                      <i class="bi bi-arrow-down-short fs-6 lh-1"></i> {{ data.stats.served_compare | abs | near }}%
+                    </span>
+                  {% elif data.stats.served_compare == 0 and data.stats.total_served > 0 %}
+                    <span class="stat-badge badge rounded-pill bg-light text-secondary border px-2 py-1 fw-medium" id="served_compare">
+                      0%
+                    </span>
+                  {% else %}
+                    <span class="stat-badge badge rounded-pill bg-warning-subtle text-warning-emphasis px-2 py-1 fw-semibold" id="served_compare">
+                      {{ get_empty_period_label(data.period) }}
+                    </span>
+                  {% endif %}
+                  <span class="small text-secondary ms-1">vs. previous period</span>
+                {% endif %}
+              </div>
+            </div>
+
+            <div class="col-12 col-sm-6 col-xl-3">
+              <div class="h-100 border rounded-3 p-3">
+                <div class="d-flex align-items-center gap-3 mb-3">
+                  <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                        style="width: 48px; height: 48px; background-color: #e7efff; color: #0b2545;">
+                    <i class="bi bi-clock fs-4"></i>
+                  </div>
+                  <div>
+                    <div class="h4 fw-bold mb-1">
+                      {{ data.stats.avg_service_time | near }} min
+                    </div>
+                    <div class="small text-secondary">Avg. Service Time</div>
+                  </div>
+                </div>
+                <!-- {% if data.stats.avg_compare is not none %}
+                  {% if data.stats.avg_compare > 0 %}
+                    <span class="stat-badge badge-up bad badge rounded-pill text-bg-danger-subtle text-danger-emphasis" id="data.stats.avg_compare">
+                      <i class="bi bi-arrow-up-short"></i> {{ data.stats.avg_compare | near }}%
+                    </span>
+                  {% elif not data.stats.avg_compare or data.stats.avg_compare | abs == 100 %}
+                    <span class="stat-badge badge-up bg-warning-subtle badge rounded-pill text-warning-emphasis" id="data.stats.avg_compare">
+                      New shift
+                    </span>
+                  {% else %}
+                    <span class="stat-badge badge-down good badge rounded-pill text-bg-success-subtle text-success-emphasis" id="data.stats.avg_compare">
+                      <i class="bi bi-arrow-down-short"></i> {{ data.stats.avg_compare | abs | near }}%
+                    </span>
+                  {% endif %}
+                  <span class="small text-secondary ms-1">vs. previous period</span>
+                {% endif %} -->
+                {% if data.period != 'all' and data.stats.avg_compare is not none %}
+                  {% if data.stats.avg_compare < 0 %}
+                    <span class="stat-badge badge rounded-pill bg-success-subtle text-success d-inline-flex align-items-center px-2 py-1 fw-semibold" id="avg_compare">
+                      <i class="bi bi-arrow-down-short fs-6 lh-1"></i> {{ data.stats.avg_compare | abs | near }}%
+                    </span>
+                  {% elif data.stats.avg_compare > 0 %}
+                    <span class="stat-badge badge rounded-pill bg-danger-subtle text-danger d-inline-flex align-items-center px-2 py-1 fw-semibold" id="avg_compare">
+                      <i class="bi bi-arrow-up-short fs-6 lh-1"></i> {{ data.stats.avg_compare | near }}%
+                    </span>
+                  {% elif data.stats.avg_compare == 0 and data.stats.avg_service_time > 0 %}
+                    <span class="stat-badge badge rounded-pill bg-light text-secondary border px-2 py-1 fw-medium" id="avg_compare">
+                      0%
+                    </span>
+                  {% else %}
+                    <span class="stat-badge badge rounded-pill bg-warning-subtle text-warning-emphasis px-2 py-1 fw-semibold" id="avg_compare">
+                      {{ get_empty_period_label(data.period) }}
+                    </span>
+                  {% endif %}
+                  <span class="small text-secondary ms-1">vs. previous period</span>
+                {% endif %}
+
+              </div>
+            </div>
+
+            <div class="col-12 col-sm-6 col-xl-3">
+              <div class="h-100 border rounded-3 p-3">
+                <div class="d-flex align-items-center gap-3 mb-3">
+                  <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                        style="width: 48px; height: 48px; background-color: #fff2dc; color: #f5a623;">
+                    <i class="bi bi-star-fill fs-4"></i>
+                  </div>
+                  <div>
+                    <div class="h4 fw-bold mb-1">
+                      {{ data.stats.avg_rating | near }}
+                    </div>
+                    <div class="small text-secondary">Avg. Rating</div>
+                  </div>
+                </div>
+
+                <div class="small text-secondary mb-2">
+                  {{ data.stats.reviews }} reviews
+                </div>
+                <!-- {% if data.stats.rateCompare is not none %}
+                  {% if data.stats.rateCompare > 0 %}
+                    <span class="stat-badge badge-up good badge rounded-pill text-bg-success-subtle text-success-emphasis" id="data.stats.rateCompare">
+                      <i class="bi bi-arrow-up-short"></i> {{ data.stats.rateCompare | near }}%
+                    </span>
+                  {% elif (not data.stats.rateCompare or data.stats.rateCompare | abs == 100) and not servedToDay %}
+                    <span class="stat-badge badge-up bg-warning-subtle badge rounded-pill text-warning-emphasis" id="data.stats.rateCompare">
+                      New shift
+                    </span>
+                  {% else %}
+                    <span class="stat-badge badge-down bad badge rounded-pill text-bg-danger-subtle text-danger-emphasis" id="data.stats.rateCompare">
+                      <i class="bi bi-arrow-down-short"></i> {{ data.stats.rateCompare | abs | near }}%
+                    </span>
+                  {% endif %}
+                  <span class="small text-secondary ms-1">vs. previous period</span>
+                {% endif %} -->
+                {% if data.period != 'all' and data.stats.rateCompare is not none %}
+                  {% if data.stats.rateCompare > 0 %}
+                    <span class="stat-badge badge rounded-pill bg-success-subtle text-success d-inline-flex align-items-center px-2 py-1 fw-semibold" id="rate_compare">
+                      <i class="bi bi-arrow-up-short fs-6 lh-1"></i> {{ data.stats.rateCompare | near }}%
+                    </span>
+                  {% elif data.stats.rateCompare < 0 %}
+                    <span class="stat-badge badge rounded-pill bg-danger-subtle text-danger d-inline-flex align-items-center px-2 py-1 fw-semibold" id="rate_compare">
+                      <i class="bi bi-arrow-down-short fs-6 lh-1"></i> {{ data.stats.rateCompare | abs | near }}%
+                    </span>
+                  {% elif data.stats.rateCompare == 0 and data.stats.reviews > 0 %}
+                    <span class="stat-badge badge rounded-pill bg-light text-secondary border px-2 py-1 fw-medium" id="rate_compare">
+                      0%
+                    </span>
+                  {% else %}
+                    <span class="stat-badge badge rounded-pill bg-warning-subtle text-warning-emphasis px-2 py-1 fw-semibold" id="rate_compare">
+                      {{ get_empty_period_label(data.period) }}
+                    </span>
+                  {% endif %}
+                  <span class="small text-secondary ms-1">vs. previous period</span>
+                {% endif %}
+              </div>
+            </div>
+
+            <div class="col-12 col-sm-6 col-xl-3">
+              <div class="h-100 border rounded-3 p-3">
+                <div class="d-flex align-items-center gap-3 mb-3">
+                  <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                        style="width: 48px; height: 48px; background-color: #e7efff; color: #0b2545;">
+                    <i class="bi bi-calendar-week fs-4"></i>
+                  </div>
+                  <div>
+                    <div class="h4 fw-bold mb-1">
+                      {{ data.stats.work_hours | int}}
+                    </div>
+                    <div class="small text-secondary">Work Hours</div>
+                  </div>
+                </div>
+                <!-- {% if data.stats.workHoursCompare is not none %}
+                  {% if data.stats.workHoursCompare > 0 %}
+                    <span class="stat-badge badge-up good badge rounded-pill text-bg-success-subtle text-success-emphasis" id="data.stats.workHoursCompare">
+                      <i class="bi bi-arrow-up-short"></i> {{ data.stats.workHoursCompare | near }}%
+                    </span>
+                  {% elif (not data.stats.workHoursCompare or data.stats.workHoursCompare | abs == 100) and not servedToDay %}
+                    <span class="stat-badge badge-up bg-warning-subtle badge rounded-pill text-warning-emphasis" id="data.stats.workHoursCompare">
+                      New shift
+                    </span>
+                  {% else %}
+                    <span class="stat-badge badge-down bad badge rounded-pill text-bg-danger-subtle text-danger-emphasis" id="data.stats.workHoursCompare">
+                      <i class="bi bi-arrow-down-short"></i> {{ data.stats.workHoursCompare | abs | near }}%
+                    </span>
+                  {% endif %}
+                  <span class="small text-secondary ms-1">vs. previous period</span>
+                {% endif %} -->
+                {% if data.period != 'all' and data.stats.workHoursCompare is not none %}
+                  {% if data.stats.workHoursCompare > 0 %}
+                    <span class="stat-badge badge rounded-pill bg-success-subtle text-success d-inline-flex align-items-center px-2 py-1 fw-semibold" id="work_hours_compare">
+                      <i class="bi bi-arrow-up-short fs-6 lh-1"></i> {{ data.stats.workHoursCompare | near }}%
+                    </span>
+                  {% elif data.stats.workHoursCompare < 0 %}
+                    <span class="stat-badge badge rounded-pill bg-danger-subtle text-danger d-inline-flex align-items-center px-2 py-1 fw-semibold" id="work_hours_compare">
+                      <i class="bi bi-arrow-down-short fs-6 lh-1"></i> {{ data.stats.workHoursCompare | abs | near }}%
+                    </span>
+                  {% elif data.stats.workHoursCompare == 0 and data.stats.work_hours > 0 %}
+                    <span class="stat-badge badge rounded-pill bg-light text-secondary border px-2 py-1 fw-medium" id="work_hours_compare">
+                      0%
+                    </span>
+                  {% else %}
+                    <span class="stat-badge badge rounded-pill bg-warning-subtle text-warning-emphasis px-2 py-1 fw-semibold" id="work_hours_compare">
+                      {{ get_empty_period_label(data.period) }}
+                    </span>
+                  {% endif %}
+                  <span class="small text-secondary ms-1">vs. previous period</span>
+                {% endif %}
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- Rating Breakdown -->
+      <div class="card border rounded-4 shadow-sm mb-4">
+        <div class="card-body p-3 p-md-4">
+
+          <div class="d-flex align-items-center gap-2 mb-4">
+            <i class="bi bi-star-fill fs-4 text-warning"></i>
+            <div>
+              <h2 class="h5 fw-bold mb-1" style="color: #0b2545;">Rating Breakdown</h2>
+              <p class="small text-secondary mb-0">Distribution of customer ratings</p>
+            </div>
+          </div>
+
+          <div class="d-flex flex-column gap-3">
+
+            <div class="d-flex align-items-center gap-3">
+              <span class="fw-bold small" style="width: 14px;">5</span>
+              <i class="bi bi-star-fill text-warning"></i>
+              <div class="progress flex-grow-1 rounded-pill" style="height: 16px; background-color: #edf2fa;">
+                <div class="progress-bar rounded-pill" role="progressbar"
+                      style="--w: {{ (data.rating_breakdown[4] / data.provider.reviews * 100) if data.provider.reviews else 0 }}%; width: var(--w); background-color: #0b2545;"
+                      aria-valuenow="{{ data.rating_breakdown[4] }}" aria-valuemin="0" aria-valuemax="{{ data.provider.reviews }}"></div>
+              </div>
+              <span class="small text-secondary text-nowrap">{{ data.rating_breakdown[4] }}</span>
+            </div>
+
+            <div class="d-flex align-items-center gap-3">
+              <span class="fw-bold small" style="width: 14px;">4</span>
+              <i class="bi bi-star-fill text-warning"></i>
+              <div class="progress flex-grow-1 rounded-pill" style="height: 16px; background-color: #edf2fa;">
+                <div class="progress-bar rounded-pill" role="progressbar"
+                      style="--w: {{ (data.rating_breakdown[3] / data.provider.reviews * 100) if data.provider.reviews else 0 }}%; width: var(--w); background-color: #2856a5;"
+                      aria-valuenow="{{ data.rating_breakdown[3] }}" aria-valuemin="0" aria-valuemax="{{ data.provider.reviews }}"></div>
+              </div>
+              <span class="small text-secondary text-nowrap">{{ data.rating_breakdown[3] }}</span>
+            </div>
+
+            <div class="d-flex align-items-center gap-3">
+              <span class="fw-bold small" style="width: 14px;">3</span>
+              <i class="bi bi-star-fill text-warning"></i>
+              <div class="progress flex-grow-1 rounded-pill" style="height: 16px; background-color: #edf2fa;">
+                <div class="progress-bar rounded-pill" role="progressbar"
+                      style=" --w: {{ (data.rating_breakdown[2] / data.provider.reviews * 100) if data.provider.reviews else 0 }}%; width: var(--w); background-color: #5b8fe0;"
+                      aria-valuenow="{{ data.rating_breakdown[2] }}" aria-valuemin="0" aria-valuemax="{{ data.provider.reviews }}"></div>
+              </div>
+              <span class="small text-secondary text-nowrap">{{ data.rating_breakdown[2] }}</span>
+            </div>
+
+            <div class="d-flex align-items-center gap-3">
+              <span class="fw-bold small" style="width: 14px;">2</span>
+              <i class="bi bi-star-fill text-warning"></i>
+              <div class="progress flex-grow-1 rounded-pill" style="height: 16px; background-color: #edf2fa;">
+                <div class="progress-bar rounded-pill" role="progressbar"
+                      style=" --w: {{ (data.rating_breakdown[1] / data.provider.reviews * 100) if data.provider.reviews else 0 }}%; width: var(--w); background-color: #87b3ed;"
+                      aria-valuenow="{{ data.rating_breakdown[1] }}" aria-valuemin="0" aria-valuemax="{{ data.provider.reviews }}"></div>
+              </div>
+              <span class="small text-secondary text-nowrap">{{ data.rating_breakdown[1] }}</span>
+            </div>
+
+            <div class="d-flex align-items-center gap-3">
+              <span class="fw-bold small" style="width: 14px;">1</span>
+              <i class="bi bi-star-fill text-warning"></i>
+              <div class="progress flex-grow-1 rounded-pill" style="height: 16px; background-color: #edf2fa;">
+                <div class="progress-bar rounded-pill" role="progressbar"
+                      style=" --w: {{ (data.rating_breakdown[0] / data.provider.reviews * 100) if data.provider.reviews else 0 }}%; width: var(--w); background-color: #b5d3f5;"
+                      aria-valuenow="{{ data.rating_breakdown[0] }}" aria-valuemin="0" aria-valuemax="{{ data.provider.reviews }}"></div>
+              </div>
+              <span class="small text-secondary text-nowrap">{{ data.rating_breakdown[0] }}</span>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent Services -->
+      <div class="card border rounded-4 shadow-sm">
+        <div class="card-body p-3 p-md-4">
+
+          <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+            <div class="d-flex align-items-center gap-3">
+              <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                    style="width: 48px; height: 48px; background-color: #e7efff; color: #0b2545;">
+                <i class="bi bi-clock-history fs-4"></i>
+              </div>
+              <div>
+                <h2 class="h5 fw-bold mb-1" style="color: #0b2545;">Recent Services</h2>
+                <p class="small text-secondary mb-0">Latest completed services</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="table-responsive rounded-3">
+            <table class="table table-hover align-middle mb-0">
+              <thead>
+                <tr class="table-light">
+                  <th scope="col" class="px-3 py-3">#</th>
+                  <th scope="col" class="px-3 py-3">Customer</th>
+                  <th scope="col" class="px-3 py-3 text-nowrap">Date &amp; Time</th>
+                  <th scope="col" class="px-3 py-3">Duration</th>
+                  <th scope="col" class="px-3 py-3">Rating</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {% for history in data.history %}
+                  <tr>
+                    <td class="px-3 py-3">{{ loop.index }}</td>
+
+                    <td class="px-3 py-3">
+                      <div class="d-flex align-items-center gap-2">
+                        <img
+                          src="https://ui-avatars.com/api/?name={{ history.customer_name }}&background=0b2545&color=fff&size=40"
+                          alt="Avatar"
+                          class="rounded-circle flex-shrink-0"
+                          width="40"
+                          height="40"
+                        >
+
+                        <div>
+                          <div class="fw-semibold text-nowrap">{{ history.customer_name }}</div>
+                          {% if history.is_guest %}
+                            <span class="badge rounded-pill bg-light text-secondary border">Guest</span>
+                          {% else %}
+                            <span class="badge rounded-pill" style="background-color: #e7efff; color: #0b2545;">Registered</span>
+                          {% endif %}
+                        </div>
+                      </div>
+                    </td>
+
+                    <td class="px-3 py-3 text-secondary text-nowrap">
+                      {{ history.datetime }}
+                    </td>
+
+                    <td class="px-3 py-3 text-nowrap">
+                      {{ history.duration | near }} min
+                    </td>
+
+                    <td class="px-3 py-3 text-nowrap">
+                      {% if history.stars %}
+                        <span class="text-warning fw-semibold">
+                          {{ history.stars | near }}
+                          <i class="bi bi-star-fill ms-1"></i>
+                        </span>
+                      {% else %}
+                        <span class="small text-secondary">Not rated</span>
+                      {% endif %}
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+
+            </table>
+          </div>
+
+        </div>
+      </div>
+
+    {% else %}
+
+      <!-- Page Header -->
+      <div class="d-flex align-items-center gap-3 mb-4">
+        <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+              style="width: 56px; height: 56px; background-color: #e7efff; color: #0b2545;">
+          <i class="bi bi-clock-history fs-3"></i>
+        </div>
         <div>
-          <p> customer_name : {{ history.customer_name }} </p>
-          <p> is_guest : {{ history.is_guest }} </p>
-          <p> datetime : {{ history.datetime }} </p>
-          <p> duration : {{ history.duration }} </p>
-          <p> stars : {{ history.stars }} </p>
+          <h1 class="h2 fw-bold mb-1" style="color: #0b2545;">My History</h1>
+          <p class="text-secondary mb-0">Your service history and performance overview</p>
         </div>
-      {% endfor %}
-    </div>
-  {% endif%}
+      </div>
+
+      <!-- Provider Profile -->
+      <div class="card border rounded-4 shadow-sm mb-4">
+        <div class="card-body p-3 p-md-4">
+          <div class="d-flex flex-column flex-sm-row align-items-sm-center gap-3">
+
+            <img
+              src="https://ui-avatars.com/api/?name={{ data['provider']['name'] }}&background=0b2545&color=fff"
+              alt="Avatar"
+              class="rounded-circle flex-shrink-0"
+              width="80"
+              height="80"
+            >
+
+            <div class="flex-grow-1">
+              <h2 class="h3 fw-bold mb-2" style="color: #0b2545;">
+                {{ data['provider']['name'] }}
+              </h2>
+
+              <div class="d-flex flex-wrap align-items-center gap-3 mb-2">
+                <span class="d-flex align-items-center gap-1">
+                  <i class="bi bi-star-fill text-warning"></i>
+                  <strong>{{ data['provider']['rating'] | near }}</strong>
+                </span>
+                <span class="text-secondary small">
+                  ({{ data['provider']['reviews'] }} reviews)
+                </span>
+              </div>
+
+              <div class="d-flex flex-column flex-sm-row flex-wrap gap-2 gap-sm-3 text-secondary small">
+                <span class="text-break">
+                  <i class="bi bi-envelope me-1"></i>
+                  {{ data['provider']['email'] }}
+                </span>
+                <span>
+                  <i class="bi bi-calendar3 me-1"></i>
+                  Joined {{ data['provider']['joined'] }}
+                </span>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- Live Queue Status -->
+      <div class="card border rounded-4 shadow-sm mb-4">
+        <div class="card-body p-3 p-md-4">
+
+          <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+            <div>
+              <h2 class="h5 fw-bold mb-1" style="color: #0b2545;">
+                <i class="bi bi-activity me-2"></i>Live Queue Status
+              </h2>
+              <p class="text-secondary small mb-0">Your current queue activity</p>
+            </div>
+
+            <span class="badge rounded-pill border px-3 py-2 bg-light text-dark">
+              {{ data.live_data.status }}
+            </span>
+          </div>
+
+          {% if data.live_data.serving_info %}
+            <div class="border rounded-3 p-3 mb-4">
+              <div class="d-flex align-items-center gap-2 mb-3">
+                <i class="bi bi-person-check fs-5" style="color: #0b2545;"></i>
+                <h3 class="h6 fw-bold mb-0">Now Serving</h3>
+              </div>
+
+              <div class="d-flex align-items-center gap-3">
+                <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                      style="width: 48px; height: 48px; background-color: #e7efff; color: #0b2545;">
+                  <i class="bi bi-person-fill fs-4"></i>
+                </div>
+
+                <div class="flex-grow-1">
+                  <h4 class="h6 fw-bold mb-1">{{ data.live_data.serving_info.name }}</h4>
+                  <p class="small text-secondary mb-2">{{ data.live_data.serving_info.type }}</p>
+                  <span class="badge rounded-pill bg-light text-dark border">
+                    <i class="bi bi-clock me-1"></i>
+                    Started {{ data.live_data.serving_info.started_ago | near }} min ago
+                  </span>
+                </div>
+              </div>
+            </div>
+          {% else %}
+          {% endif %}
+
+          {% if data.live_data.up_next %}
+            <div>
+              <div class="d-flex align-items-center gap-2 mb-3">
+                <i class="bi bi-people fs-5" style="color: #0b2545;"></i>
+                <h3 class="h6 fw-bold mb-0">Up Next</h3>
+              </div>
+
+              <div class="row g-3">
+                {% for witing in data.live_data.up_next %}
+                  <div class="col-12 col-md-6 col-xl-4">
+                    <div class="h-100 border rounded-3 p-3">
+
+                      <div class="d-flex align-items-center gap-2 mb-3">
+                        <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                              style="width: 42px; height: 42px; background-color: #e7efff; color: #0b2545;">
+                          <i class="bi bi-person fs-5"></i>
+                        </div>
+
+                        <div class="flex-grow-1">
+                          <h4 class="h6 fw-bold mb-1">{{ witing.name }}</h4>
+                          <span class="small text-secondary">{{ witing.type }}</span>
+                        </div>
+                      </div>
+
+                      <div class="d-flex justify-content-between align-items-center gap-2 mb-2">
+                        <span class="small text-secondary">Waited</span>
+                        <span class="fw-semibold">{{ witing.waited_min | near }} min</span>
+                      </div>
+
+                      <div class="d-flex justify-content-between align-items-center gap-2">
+                        <span class="small text-secondary">Estimated wait</span>
+                        <span class="badge rounded-pill text-bg-primary">
+                          {{ witing.estimated_min | near }} min
+                        </span>
+                      </div>
+
+                    </div>
+                  </div>
+                {% endfor %}
+              </div>
+            </div>
+          {% else %}
+          {% endif %}
+
+        </div>
+      </div>
+
+      <!-- Performance Overview -->
+      <div class="card border rounded-4 shadow-sm mb-4">
+        <div class="card-body p-3 p-md-4">
+
+          <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+            <div>
+              <h2 class="h5 fw-bold mb-1" style="color: #0b2545;">
+                <i class="bi bi-bar-chart-line me-2"></i>Performance Overview
+              </h2>
+              <p class="text-secondary small mb-0">
+                Your statistics from completed services
+              </p>
+            </div>
+
+            <form action="/providers/history/{{ prov_id }}" method="get"
+                  id="periodFrom" class="d-flex align-items-center gap-2">
+              <label for="period" class="small fw-semibold mb-0">Period</label>
+              <select name="period" id="period" class="form-select">
+                <option value="all" {% if not data.period or data.period == 'all' %} selected {% endif %}>All time</option>
+                <option value="today" {% if data.period == 'today' %} selected {% endif %}>Today</option>
+                <option value="week" {% if data.period == 'week' %} selected {% endif %}>This week</option>
+                <option value="month" {% if data.period == 'month' %} selected {% endif %}>This month</option>
+                <option value="year" {% if data.period == 'year' %} selected {% endif %}>This year</option>
+              </select>
+            </form>
+          </div>
+
+          <p class="small text-secondary mb-3">
+            Selected period:
+            <span class="badge rounded-pill bg-light text-dark border">
+              {{ data.period }}
+            </span>
+          </p>
+
+          <div class="row g-3">
+
+            <div class="col-12 col-sm-6 col-xl-3">
+              <div class="h-100 border rounded-3 p-3">
+                <div class="d-flex align-items-center gap-3 mb-3">
+                  <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                        style="width: 48px; height: 48px; background-color: #e7efff; color: #0b2545;">
+                    <i class="bi bi-people-fill fs-4"></i>
+                  </div>
+                  <div>
+                    <div class="h4 fw-bold mb-1">{{ data.stats.total_served }}</div>
+                    <div class="small text-secondary">Total Served</div>
+                  </div>
+                </div>
+                <!-- {% if data.stats.served_compare is not none %}
+                  {% if data.stats.served_compare > 0 %}
+                    <span class="stat-badge badge-up good badge rounded-pill text-bg-success-subtle text-success-emphasis" id="data.stats.served_compare">
+                      <i class="bi bi-arrow-up-short"></i> {{ data.stats.served_compare | near }}%
+                    </span>
+                  {% elif (not data.stats.served_compare or data.stats.served_compare | abs == 100) and not servedToDay %}
+                    <span class="stat-badge badge-up bg-warning-subtle badge rounded-pill text-warning-emphasis" id="data.stats.served_compare">
+                      New shift
+                    </span>
+                  {% else %}
+                    <span class="stat-badge badge-down bad badge rounded-pill text-bg-danger-subtle text-danger-emphasis" id="data.stats.served_compare">
+                      <i class="bi bi-arrow-down-short"></i> {{ data.stats.served_compare | abs | near }}%
+                    </span>
+                  {% endif %}
+                  <span class="small text-secondary ms-1">vs. previous period</span>
+                {% endif %} -->
+                {% if data.period != 'all' and data.stats.served_compare is not none %}
+                  {% if data.stats.served_compare > 0 %}
+                    <span class="stat-badge badge rounded-pill bg-success-subtle text-success d-inline-flex align-items-center px-2 py-1 fw-semibold" id="served_compare">
+                      <i class="bi bi-arrow-up-short fs-6 lh-1"></i> {{ data.stats.served_compare | near }}%
+                    </span>
+                  {% elif data.stats.served_compare < 0 %}
+                    <span class="stat-badge badge rounded-pill bg-danger-subtle text-danger d-inline-flex align-items-center px-2 py-1 fw-semibold" id="served_compare">
+                      <i class="bi bi-arrow-down-short fs-6 lh-1"></i> {{ data.stats.served_compare | abs | near }}%
+                    </span>
+                  {% elif data.stats.served_compare == 0 and data.stats.total_served > 0 %}
+                    <span class="stat-badge badge rounded-pill bg-light text-secondary border px-2 py-1 fw-medium" id="served_compare">
+                      0%
+                    </span>
+                  {% else %}
+                    <span class="stat-badge badge rounded-pill bg-warning-subtle text-warning-emphasis px-2 py-1 fw-semibold" id="served_compare">
+                      {{ get_empty_period_label(data.period) }}
+                    </span>
+                  {% endif %}
+                  <span class="small text-secondary ms-1">vs. previous period</span>
+                {% endif %}
+              </div>
+            </div>
+
+            <div class="col-12 col-sm-6 col-xl-3">
+              <div class="h-100 border rounded-3 p-3">
+                <div class="d-flex align-items-center gap-3 mb-3">
+                  <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                        style="width: 48px; height: 48px; background-color: #e7efff; color: #0b2545;">
+                    <i class="bi bi-clock fs-4"></i>
+                  </div>
+                  <div>
+                    <div class="h4 fw-bold mb-1">
+                      {{ data.stats.avg_service_time | near }} min
+                    </div>
+                    <div class="small text-secondary">Avg. Service Time</div>
+                  </div>
+                </div>
+                <!-- {% if data.stats.avg_compare is not none %}
+                  {% if data.stats.avg_compare > 0 %}
+                    <span class="stat-badge badge-up bad badge rounded-pill text-bg-danger-subtle text-danger-emphasis" id="data.stats.avg_compare">
+                      <i class="bi bi-arrow-up-short"></i> {{ data.stats.avg_compare | near }}%
+                    </span>
+                  {% elif not data.stats.avg_compare or data.stats.avg_compare | abs == 100 %}
+                    <span class="stat-badge badge-up bg-warning-subtle badge rounded-pill text-warning-emphasis" id="data.stats.avg_compare">
+                      New shift
+                    </span>
+                  {% else %}
+                    <span class="stat-badge badge-down good badge rounded-pill text-bg-success-subtle text-success-emphasis" id="data.stats.avg_compare">
+                      <i class="bi bi-arrow-down-short"></i> {{ data.stats.avg_compare | abs | near }}%
+                    </span>
+                  {% endif %}
+                  <span class="small text-secondary ms-1">vs. previous period</span>
+                {% endif %} -->
+                {% if data.period != 'all' and data.stats.avg_compare is not none %}
+                  {% if data.stats.avg_compare < 0 %}
+                    <span class="stat-badge badge rounded-pill bg-success-subtle text-success d-inline-flex align-items-center px-2 py-1 fw-semibold" id="avg_compare">
+                      <i class="bi bi-arrow-down-short fs-6 lh-1"></i> {{ data.stats.avg_compare | abs | near }}%
+                    </span>
+                  {% elif data.stats.avg_compare > 0 %}
+                    <span class="stat-badge badge rounded-pill bg-danger-subtle text-danger d-inline-flex align-items-center px-2 py-1 fw-semibold" id="avg_compare">
+                      <i class="bi bi-arrow-up-short fs-6 lh-1"></i> {{ data.stats.avg_compare | near }}%
+                    </span>
+                  {% elif data.stats.avg_compare == 0 and data.stats.avg_service_time > 0 %}
+                    <span class="stat-badge badge rounded-pill bg-light text-secondary border px-2 py-1 fw-medium" id="avg_compare">
+                      0%
+                    </span>
+                  {% else %}
+                    <span class="stat-badge badge rounded-pill bg-warning-subtle text-warning-emphasis px-2 py-1 fw-semibold" id="avg_compare">
+                      {{ get_empty_period_label(data.period) }}
+                    </span>
+                  {% endif %}
+                  <span class="small text-secondary ms-1">vs. previous period</span>
+                {% endif %}
+              </div>
+            </div>
+
+            <div class="col-12 col-sm-6 col-xl-3">
+              <div class="h-100 border rounded-3 p-3">
+                <div class="d-flex align-items-center gap-3 mb-3">
+                  <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                        style="width: 48px; height: 48px; background-color: #fff2dc; color: #f5a623;">
+                    <i class="bi bi-star-fill fs-4"></i>
+                  </div>
+                  <div>
+                    <div class="h4 fw-bold mb-1">
+                      {{ data.stats.avg_rating | near }}
+                    </div>
+                    <div class="small text-secondary">Avg. Rating</div>
+                  </div>
+                </div>
+
+                <div class="small text-secondary mb-2">
+                  {{ data.stats.reviews }} reviews
+                </div>
+                <!-- {% if data.stats.rateCompare is not none %}
+                  {% if data.stats.rateCompare > 0 %}
+                    <span class="stat-badge badge-up good badge rounded-pill text-bg-success-subtle text-success-emphasis" id="data.stats.rateCompare">
+                      <i class="bi bi-arrow-up-short"></i> {{ data.stats.rateCompare | near }}%
+                    </span>
+                  {% elif (not data.stats.rateCompare or data.stats.rateCompare | abs == 100) and not servedToDay %}
+                    <span class="stat-badge badge-up bg-warning-subtle badge rounded-pill text-warning-emphasis" id="data.stats.rateCompare">
+                      New shift
+                    </span>
+                  {% else %}
+                    <span class="stat-badge badge-down bad badge rounded-pill text-bg-danger-subtle text-danger-emphasis" id="data.stats.rateCompare">
+                      <i class="bi bi-arrow-down-short"></i> {{ data.stats.rateCompare | abs | near }}%
+                    </span>
+                  {% endif %}
+                  <span class="small text-secondary ms-1">vs. previous period</span>
+                {% endif %} -->
+                {% if data.period != 'all' and data.stats.rateCompare is not none %}
+                  {% if data.stats.rateCompare > 0 %}
+                    <span class="stat-badge badge rounded-pill bg-success-subtle text-success d-inline-flex align-items-center px-2 py-1 fw-semibold" id="rate_compare">
+                      <i class="bi bi-arrow-up-short fs-6 lh-1"></i> {{ data.stats.rateCompare | near }}%
+                    </span>
+                  {% elif data.stats.rateCompare < 0 %}
+                    <span class="stat-badge badge rounded-pill bg-danger-subtle text-danger d-inline-flex align-items-center px-2 py-1 fw-semibold" id="rate_compare">
+                      <i class="bi bi-arrow-down-short fs-6 lh-1"></i> {{ data.stats.rateCompare | abs | near }}%
+                    </span>
+                  {% elif data.stats.rateCompare == 0 and data.stats.reviews > 0 %}
+                    <span class="stat-badge badge rounded-pill bg-light text-secondary border px-2 py-1 fw-medium" id="rate_compare">
+                      0%
+                    </span>
+                  {% else %}
+                    <span class="stat-badge badge rounded-pill bg-warning-subtle text-warning-emphasis px-2 py-1 fw-semibold" id="rate_compare">
+                      {{ get_empty_period_label(data.period) }}
+                    </span>
+                  {% endif %}
+                  <span class="small text-secondary ms-1">vs. previous period</span>
+                {% endif %}
+              </div>
+            </div>
+
+            <div class="col-12 col-sm-6 col-xl-3">
+              <div class="h-100 border rounded-3 p-3">
+                <div class="d-flex align-items-center gap-3 mb-3">
+                  <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                        style="width: 48px; height: 48px; background-color: #e7efff; color: #0b2545;">
+                    <i class="bi bi-calendar-week fs-4"></i>
+                  </div>
+                  <div>
+                    <div class="h4 fw-bold mb-1">
+                      {{ data.stats.work_hours | int }}
+                    </div>
+                    <div class="small text-secondary">Work Hours</div>
+                  </div>
+                </div>
+                <!-- {% if data.stats.workHoursCompare is not none %}
+                  {% if data.stats.workHoursCompare > 0 %}
+                    <span class="stat-badge badge-up good badge rounded-pill text-bg-success-subtle text-success-emphasis" id="data.stats.workHoursCompare">
+                      <i class="bi bi-arrow-up-short"></i> {{ data.stats.workHoursCompare | near }}%
+                    </span>
+                  {% elif (not data.stats.workHoursCompare or data.stats.workHoursCompare | abs == 100) and not servedToDay %}
+                    <span class="stat-badge badge-up bg-warning-subtle badge rounded-pill text-warning-emphasis" id="data.stats.workHoursCompare">
+                      New shift
+                    </span>
+                  {% else %}
+                    <span class="stat-badge badge-down bad badge rounded-pill text-bg-danger-subtle text-danger-emphasis" id="data.stats.workHoursCompare">
+                      <i class="bi bi-arrow-down-short"></i> {{ data.stats.workHoursCompare | abs | near }}%
+                    </span>
+                  {% endif %}
+                  <span class="small text-secondary ms-1">vs. previous period</span>
+                {% endif %} -->
+                {% if data.period != 'all' and data.stats.workHoursCompare is not none %}
+                  {% if data.stats.workHoursCompare > 0 %}
+                    <span class="stat-badge badge rounded-pill bg-success-subtle text-success d-inline-flex align-items-center px-2 py-1 fw-semibold" id="work_hours_compare">
+                      <i class="bi bi-arrow-up-short fs-6 lh-1"></i> {{ data.stats.workHoursCompare | near }}%
+                    </span>
+                  {% elif data.stats.workHoursCompare < 0 %}
+                    <span class="stat-badge badge rounded-pill bg-danger-subtle text-danger d-inline-flex align-items-center px-2 py-1 fw-semibold" id="work_hours_compare">
+                      <i class="bi bi-arrow-down-short fs-6 lh-1"></i> {{ data.stats.workHoursCompare | abs | near }}%
+                    </span>
+                  {% elif data.stats.workHoursCompare == 0 and data.stats.work_hours > 0 %}
+                    <span class="stat-badge badge rounded-pill bg-light text-secondary border px-2 py-1 fw-medium" id="work_hours_compare">
+                      0%
+                    </span>
+                  {% else %}
+                    <span class="stat-badge badge rounded-pill bg-warning-subtle text-warning-emphasis px-2 py-1 fw-semibold" id="work_hours_compare">
+                      {{ get_empty_period_label(data.period) }}
+                    </span>
+                  {% endif %}
+                  <span class="small text-secondary ms-1">vs. previous period</span>
+                {% endif %}
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- Rating Breakdown -->
+      <div class="card border rounded-4 shadow-sm mb-4">
+        <div class="card-body p-3 p-md-4">
+
+          <div class="d-flex align-items-center gap-2 mb-4">
+            <i class="bi bi-star-fill fs-4 text-warning"></i>
+            <div>
+              <h2 class="h5 fw-bold mb-1" style="color: #0b2545;">Rating Breakdown</h2>
+              <p class="small text-secondary mb-0">Distribution of customer ratings</p>
+            </div>
+          </div>
+
+          <div class="d-flex flex-column gap-3">
+
+            <div class="d-flex align-items-center gap-3">
+              <span class="fw-bold small" style="width: 14px;">5</span>
+              <i class="bi bi-star-fill text-warning"></i>
+              <div class="progress flex-grow-1 rounded-pill" style="height: 16px; background-color: #edf2fa;">
+                <div class="progress-bar rounded-pill" role="progressbar"
+                      style=" --w: {{ (data.rating_breakdown[4] / data.provider.reviews * 100) if data.provider.reviews else 0  }}%; width: var(--w); background-color: #0b2545;"
+                      aria-valuenow="{{ data.rating_breakdown[4] }}" aria-valuemin="0" aria-valuemax="{{ data.provider.reviews }}"></div>
+              </div>
+              <span class="small text-secondary text-nowrap">{{ data.rating_breakdown[4] }}</span>
+            </div>
+
+            <div class="d-flex align-items-center gap-3">
+              <span class="fw-bold small" style="width: 14px;">4</span>
+              <i class="bi bi-star-fill text-warning"></i>
+              <div class="progress flex-grow-1 rounded-pill" style="height: 16px; background-color: #edf2fa;">
+                <div class="progress-bar rounded-pill" role="progressbar"
+                      style="  --w: {{ (data.rating_breakdown[3] / data.provider.reviews * 100) if data.provider.reviews else 0  }}%; width: var(--w); background-color: #2856a5;"
+                      aria-valuenow="{{ data.rating_breakdown[3] }}" aria-valuemin="0" aria-valuemax="{{ data.provider.reviews }}"></div>
+              </div>
+              <span class="small text-secondary text-nowrap">{{ data.rating_breakdown[3] }}</span>
+            </div>
+
+            <div class="d-flex align-items-center gap-3">
+              <span class="fw-bold small" style="width: 14px;">3</span>
+              <i class="bi bi-star-fill text-warning"></i>
+              <div class="progress flex-grow-1 rounded-pill" style="height: 16px; background-color: #edf2fa;">
+                <div class="progress-bar rounded-pill" role="progressbar"
+                      style=" --w: {{ (data.rating_breakdown[2] / data.provider.reviews * 100) if data.provider.reviews else 0  }}%; width: var(--w); background-color: #5b8fe0;"
+                      aria-valuenow="{{ data.rating_breakdown[2] }}" aria-valuemin="0" aria-valuemax="{{ data.provider.reviews }}"></div>
+              </div>
+              <span class="small text-secondary text-nowrap">{{ data.rating_breakdown[2] }}</span>
+            </div>
+
+            <div class="d-flex align-items-center gap-3">
+              <span class="fw-bold small" style="width: 14px;">2</span>
+              <i class="bi bi-star-fill text-warning"></i>
+              <div class="progress flex-grow-1 rounded-pill" style="height: 16px; background-color: #edf2fa;">
+                <div class="progress-bar rounded-pill" role="progressbar"
+                      style=" --w: {{ (data.rating_breakdown[1] / data.provider.reviews * 100) if data.provider.reviews else 0  }}%; width: var(--w); background-color: #87b3ed;"
+                      aria-valuenow="{{ data.rating_breakdown[1] }}" aria-valuemin="0" aria-valuemax="{{ data.provider.reviews }}"></div>
+              </div>
+              <span class="small text-secondary text-nowrap">{{ data.rating_breakdown[1] }}</span>
+            </div>
+
+            <div class="d-flex align-items-center gap-3">
+              <span class="fw-bold small" style="width: 14px;">1</span>
+              <i class="bi bi-star-fill text-warning"></i>
+              <div class="progress flex-grow-1 rounded-pill" style="height: 16px; background-color: #edf2fa;">
+                <div class="progress-bar rounded-pill" role="progressbar"
+                      style=" --w: {{ (data.rating_breakdown[0] / data.provider.reviews * 100) if data.provider.reviews else 0  }}%; width: var(--w); background-color: #b5d3f5;"
+                      aria-valuenow="{{ data.rating_breakdown[0] }}" aria-valuemin="0" aria-valuemax="{{ data.provider.reviews }}"></div>
+              </div>
+              <span class="small text-secondary text-nowrap">{{ data.rating_breakdown[0] }}</span>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent Services -->
+      <div class="card border rounded-4 shadow-sm">
+        <div class="card-body p-3 p-md-4">
+
+          <div class="d-flex align-items-center gap-3 mb-4">
+            <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                  style="width: 48px; height: 48px; background-color: #e7efff; color: #0b2545;">
+              <i class="bi bi-clock-history fs-4"></i>
+            </div>
+            <div>
+              <h2 class="h5 fw-bold mb-1" style="color: #0b2545;">Recent Services</h2>
+              <p class="small text-secondary mb-0">Your latest completed services</p>
+            </div>
+          </div>
+
+          <div class="table-responsive rounded-3">
+            <table class="table table-hover align-middle mb-0">
+              <thead>
+                <tr class="table-light">
+                  <th scope="col" class="px-3 py-3">#</th>
+                  <th scope="col" class="px-3 py-3">Customer</th>
+                  <th scope="col" class="px-3 py-3 text-nowrap">Date &amp; Time</th>
+                  <th scope="col" class="px-3 py-3">Duration</th>
+                  <th scope="col" class="px-3 py-3">Rating</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {% for history in data.history %}
+                  <tr>
+                    <td class="px-3 py-3">{{ loop.index }}</td>
+
+                    <td class="px-3 py-3">
+                      <div class="d-flex align-items-center gap-2">
+                        <img
+                          src="https://ui-avatars.com/api/?name={{ history.customer_name }}&background=0b2545&color=fff&size=40"
+                          alt="Avatar"
+                          class="rounded-circle flex-shrink-0"
+                          width="40"
+                          height="40"
+                        >
+
+                        <div>
+                          <div class="fw-semibold text-nowrap">{{ history.customer_name }}</div>
+                          {% if history.is_guest %}
+                            <span class="badge rounded-pill bg-light text-secondary border">Guest</span>
+                          {% else %}
+                            <span class="badge rounded-pill" style="background-color: #e7efff; color: #0b2545;">Registered</span>
+                          {% endif %}
+                        </div>
+                      </div>
+                    </td>
+
+                    <td class="px-3 py-3 text-secondary text-nowrap">
+                      {{ history.datetime }}
+                    </td>
+
+                    <td class="px-3 py-3 text-nowrap">
+                      {{ history.duration | near }} min
+                    </td>
+
+                    <td class="px-3 py-3 text-nowrap">
+                      {% if history.stars %}
+                        <span class="text-warning fw-semibold">
+                          {{ history.stars | near }}
+                          <i class="bi bi-star-fill ms-1"></i>
+                        </span>
+                      {% else %}
+                        <span class="small text-secondary">Not rated</span>
+                      {% endif %}
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+
+        </div>
+      </div>
+
+    {% endif %}
+
+  </div>
 {% endblock %}

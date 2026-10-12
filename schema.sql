@@ -7,14 +7,14 @@ CREATE TABLE users (
     city TEXT DEFAULT 'Cairo',
     is_verified BOOLEAN NOT NULL DEFAULT 0,
     verification_code TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT (datetime('now', '+3 hours'))
 );
 CREATE TABLE providers (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL UNIQUE,
     manager_id INTEGER,
     invite_code TEXT NOT NULL UNIQUE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT (datetime('now', '+3 hours')),
     FOREIGN KEY (user_id) REFERENCES users(id),
     FOREIGN KEY (manager_id) REFERENCES managers(id)
 );
@@ -22,7 +22,7 @@ CREATE TABLE managers (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL UNIQUE,
     company_name TEXT NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT (datetime('now', '+3 hours')),
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
 CREATE TABLE queues (
@@ -31,7 +31,7 @@ CREATE TABLE queues (
     company_id INTEGER NOT NULL,
     status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'closed')),
     service_id INTEGER REFERENCES services(id),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT (datetime('now', '+3 hours')),
     closed_at TIMESTAMP,
     FOREIGN KEY (provider_id) REFERENCES providers(id),
     FOREIGN KEY (company_id) REFERENCES companies(id)
@@ -43,7 +43,7 @@ CREATE TABLE queue_entries (
     user_name TEXT NOT NULL,
     position INTEGER NOT NULL,
     status TEXT NOT NULL DEFAULT 'waiting' CHECK (status IN ('waiting', 'serving', 'done', 'canceled', 'didnt_come')),
-    joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    joined_at TIMESTAMP DEFAULT (datetime('now', '+3 hours')),
     ip_address TEXT,
     FOREIGN KEY (queue_id) REFERENCES queues(id),
     FOREIGN KEY (user_id) REFERENCES users(id)
@@ -75,14 +75,15 @@ CREATE TABLE companies (
     address TEXT,
     phone TEXT,
     description TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT (datetime('now', '+3 hours')),
     FOREIGN KEY (manager_id) REFERENCES managers(id) ON DELETE CASCADE
 );
 CREATE TABLE services (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     company_id INTEGER NOT NULL,
     name TEXT NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    is_active INTEGER NOT NULL DEFAULT 1,
+    created_at TIMESTAMP DEFAULT (datetime('now', '+3 hours')),
     FOREIGN KEY (company_id) REFERENCES companies(id)
 );
 CREATE VIRTUAL TABLE companies_fts USING fts5( company_id UNINDEXED, name, description, category );

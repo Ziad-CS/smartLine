@@ -1,0 +1,326 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Manager Dashboard
+{% endblock %}
+
+{% block main %}
+<div class="container-fluid py-4">
+
+    <!-- Header -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+        <div>
+            <h1 class="h3 fw-bold mb-1">Dashboard</h1>
+            <p class="text-secondary mb-0">
+                Monitor your company's live queue operations and staffing.
+            </p>
+        </div>
+        <a href="{{ url_for('managerReports') }}" class="btn btn-primary shadow-sm">
+            <i class="bi bi-bar-chart-line me-1"></i> View Reports
+        </a>
+    </div>
+
+    <!-- Overview Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-xl-2">
+            <div class="card h-100 border-0 shadow-sm">
+                <div class="card-body">
+                    <p class="text-secondary small mb-1">Total Providers</p>
+                    <h2 class="fw-bold mb-0 text-navy">{{ total_providers }}</h2>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-6 col-xl-2">
+            <div class="card h-100 border-0 shadow-sm">
+                <div class="card-body">
+                    <p class="text-secondary small mb-1">On Shift</p>
+                    <h2 class="fw-bold mb-0 text-success">{{ providers_on_shift }}</h2>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-6 col-xl-2">
+            <div class="card h-100 border-0 shadow-sm">
+                <div class="card-body">
+                    <p class="text-secondary small mb-1">Active Counters</p>
+                    <h2 class="fw-bold mb-0 text-primary">{{ total_operational_queues }}</h2>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-6 col-xl-3">
+            <div class="card h-100 border-0 shadow-sm">
+                <div class="card-body">
+                    <p class="text-secondary small mb-1">Waiting Customers</p>
+                    <h2 class="fw-bold mb-0 text-warning-emphasis">{{ total_waiting }}</h2>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-6 col-xl-3">
+            <div class="card h-100 border-0 shadow-sm">
+                <div class="card-body">
+                    <p class="text-secondary small mb-1">Currently Serving</p>
+                    <h2 class="fw-bold mb-0 text-info-emphasis">{{ total_serving }}</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Live Charts -->
+    <div class="row g-3 mb-4">
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <h2 class="h5 fw-bold mb-3">Provider Availability</h2>
+                    <div style="height: 280px;">
+                        <canvas id="providerChart" 
+                                data-on-shift="{{ providers_on_shift }}" 
+                                data-off-shift="{{ providers_off_shift }}">
+                        </canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <h2 class="h5 fw-bold mb-3">Current Queue Load</h2>
+                    <div style="height: 280px;">
+                        <canvas id="queueChart" 
+                                data-waiting="{{ total_waiting }}" 
+                                data-serving="{{ total_serving }}">
+                        </canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Operational Alerts -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body">
+            <div class="d-flex align-items-center gap-2 mb-3">
+                <i class="bi bi-exclamation-triangle-fill text-warning fs-5"></i>
+                <h2 class="h5 fw-bold mb-0">Operational Alerts</h2>
+            </div>
+
+            {% if operational_alerts %}
+                <div class="list-group list-group-flush">
+                    {% for alert in operational_alerts %}
+                        <div class="list-group-item px-0 py-3">
+                            <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
+                                <div>
+                                    <div class="fw-bold text-dark mb-1">
+                                        {{ alert.provider_name }} &bull; Customer: {{ alert.customer_name }}
+                                    </div>
+                                    <p class="text-secondary small mb-0">
+                                        {{ alert.message }} 
+                                        <span class="fw-medium text-dark">({{ alert.minutes }} min vs. expected ~{{ alert.expected_minutes }} min)</span>
+                                    </p>
+                                </div>
+                                <span class="badge rounded-pill bg-{{ 'danger' if alert.severity == 'high' else 'warning' }}-subtle text-{{ 'danger' if alert.severity == 'high' else 'warning-emphasis' }} border border-{{ 'danger' if alert.severity == 'high' else 'warning' }}-subtle px-3 py-2 fw-semibold">
+                                    {{ alert.severity|capitalize }} Priority
+                                </span>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="text-secondary mb-0">
+                    <i class="bi bi-check-circle-fill text-success me-1"></i> All queues are running normally. No alerts at the moment.
+                </p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Provider Workload Balance -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                    <h2 class="h5 fw-bold mb-1">Staffing & Workload Balance</h2>
+                    <p class="text-secondary small mb-0">Real-time status and queue load distributed across providers</p>
+                </div>
+                <i class="bi bi-people-fill fs-4 text-primary"></i>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Provider</th>
+                            <th>Status</th>
+                            <th>Assigned Service</th>
+                            <th>Waiting in Line</th>
+                            <th>Now Serving</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in provider_workload %}
+                            <tr>
+                                <td>
+                                    <div class="fw-bold text-dark">{{ item.provider_name }}</div>
+                                    <small class="text-secondary">{{ item.provider_email }}</small>
+                                </td>
+                                <td>
+                                    {% if item.on_shift %}
+                                        <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1">On Shift</span>
+                                    {% else %}
+                                        <span class="badge bg-light text-secondary border rounded-pill px-2 py-1">Off Shift</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {{ item.service_name or "General / None" }}
+                                </td>
+                                <td>
+                                    {% if item.on_shift %}
+                                        <span class="fw-bold {% if item.waiting_count > 5 %}text-danger{% else %}text-dark{% endif %}">
+                                            {{ item.waiting_count }}
+                                        </span>
+                                    {% else %}
+                                        <span class="text-muted">—</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if item.on_shift %}
+                                        <span class="badge bg-primary-subtle text-primary rounded-pill">{{ item.serving_count }}</span>
+                                    {% else %}
+                                        <span class="text-muted">—</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <a href="/providers/history/{{ item.provider_id }}" class="btn btn-sm btn-outline-secondary">
+                                        View History
+                                    </a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Activity -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                    <h2 class="h5 fw-bold mb-1">Recent Completed Activity</h2>
+                    <p class="text-secondary small mb-0">Latest completed services in your branch</p>
+                </div>
+                <a href="{{ url_for('managerReports') }}" class="text-decoration-none small fw-semibold">
+                    Full Analytics &rarr;
+                </a>
+            </div>
+
+            {% if recent_activity %}
+                <div class="table-responsive">
+                    <table class="table align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Customer</th>
+                                <th>Provider</th>
+                                <th>Service</th>
+                                <th>Completed At</th>
+                                <th>Rating</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for activity in recent_activity %}
+                                <tr>
+                                    <td class="fw-medium">{{ activity.customer_name }}</td>
+                                    <td>{{ activity.provider_name }}</td>
+                                    <td>{{ activity.service_name or "General" }}</td>
+                                    <td class="text-secondary">{{ activity.end_time }}</td>
+                                    <td>
+                                        {% if activity.stars %}
+                                            <span class="text-warning fw-semibold">
+                                                {{ activity.stars }} <i class="bi bi-star-fill"></i>
+                                            </span>
+                                        {% else %}
+                                            <span class="text-muted small">Not rated</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p class="text-secondary mb-0">
+                    No completed services recorded yet.
+                </p>
+            {% endif %}
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block js %}
+<script>
+    // Provider availability doughnut chart
+    const providerChartEl = document.getElementById("providerChart");
+    if (providerChartEl) {
+        const onShift = Number(providerChartEl.dataset.onShift) || 0;
+        const offShift = Number(providerChartEl.dataset.offShift) || 0;
+
+        new Chart(providerChartEl, {
+            type: "doughnut",
+            data: {
+                labels: ["On Shift", "Off Shift"],
+                datasets: [{
+                    data: [onShift, offShift],
+                    backgroundColor: ["#0c206d", "#dce2f0"],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: "bottom" }
+                }
+            }
+        });
+    }
+
+    // Current queue load bar chart
+    const queueChartEl = document.getElementById("queueChart");
+    if (queueChartEl) {
+        const totalWaiting = Number(queueChartEl.dataset.waiting) || 0;
+        const totalServing = Number(queueChartEl.dataset.serving) || 0;
+
+        new Chart(queueChartEl, {
+            type: "bar",
+            data: {
+                labels: ["Waiting", "Serving"],
+                datasets: [{
+                    label: "Customers",
+                    data: [totalWaiting, totalServing],
+                    backgroundColor: ["#F27A3D", "#0c206d"],
+                    borderRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { precision: 0 }
+                    }
+                },
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+    }
+</script>
+{% endblock %}

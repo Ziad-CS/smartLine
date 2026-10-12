@@ -112,12 +112,18 @@ def send_otp(id) :
     server.send_message(msg)
 
 
+# def calculate_change(new_value, base_value):
+#   if base_value <= 0 :
+#     calc = 0
+#   else :
+#     calc = ((new_value / base_value) * 100) - 100
+#   return calc
 def calculate_change(new_value, base_value):
-  if base_value <= 0 :
-    calc = 0
-  else :
-    calc = ((new_value / base_value) * 100) - 100
-  return calc
+  if new_value == 0 and base_value == 0:
+    return 0
+  if base_value is None or base_value <= 0:
+    return None
+  return ((new_value / base_value) * 100) - 100
 
 def limitFloat( floatNum ):
   return f"{floatNum: ,.1f}"

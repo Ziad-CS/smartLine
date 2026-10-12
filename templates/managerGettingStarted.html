@@ -1,0 +1,91 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Getting Started
+{% endblock %}
+
+{% block main %}
+  <div class="container py-5">
+
+      <div class="row justify-content-center">
+          <div class="col-12 col-lg-8 col-xl-7">
+
+              <div class="card border-0 shadow-sm">
+                  <div class="card-body p-4 p-md-5 text-center">
+
+                      <div class="rounded-circle bg-primary-subtle d-inline-flex align-items-center justify-content-center p-4 mb-4">
+                          <i class="bi bi-graph-up-arrow display-5 text-primary"></i>
+                      </div>
+
+                      <p class="text-primary fw-semibold mb-2">
+                          {{ company.name }}
+                      </p>
+
+                      <h1 class="h2 fw-bold mb-3">Your journey starts here</h1>
+
+                      <p class="text-secondary mb-4">
+                          SmartLine is collecting your company's service history.
+                          Once you reach the required number of completed services,
+                          this page will unlock your performance insights.
+                      </p>
+
+                      <div class="border rounded-3 p-3 p-md-4 text-start mb-4">
+
+                          <div class="d-flex justify-content-between align-items-center gap-3 mb-2">
+                              <span class="fw-semibold">Completed Services</span>
+                              <span class="fw-bold">
+                                  {{ completed_services }} / {{ target_services }}
+                              </span>
+                          </div>
+
+                          <div
+                              class="progress mb-3"
+                              role="progressbar"
+                              aria-label="Completed services progress"
+                              aria-valuenow="{{ progress|round|int }}"
+                              aria-valuemin="0"
+                              aria-valuemax="100"
+                              style="height: 12px;"
+                          >
+                              <div
+                                  class="progress-bar"
+                                  style="--w : {{ progress }}%; width: var(--w);"
+                              ></div>
+                          </div>
+
+                          <div class="d-flex flex-wrap justify-content-between gap-2 small text-secondary">
+                              <span>{{ progress|round|int }}% completed</span>
+                              <span>{{ remaining_services }} remaining</span>
+                          </div>
+
+                      </div>
+
+                      {% if remaining_services > 0 %}
+                          <p class="mb-4">
+                              Complete
+                              <strong>{{ remaining_services }}</strong>
+                              more services to unlock this section.
+                          </p>
+                      {% else %}
+                          <p class="mb-4">
+                              Your company has reached the required number of services.
+                          </p>
+                      {% endif %}
+
+                      <a href="/manager/dashboard" class="btn btn-primary px-4">
+                          <i class="bi bi-speedometer2 me-1"></i>
+                          Back to Dashboard
+                      </a>
+
+                  </div>
+              </div>
+
+              <p class="text-secondary small text-center mt-3 mb-0">
+                  Reports become more useful as your company builds a reliable service history.
+              </p>
+
+          </div>
+      </div>
+
+  </div>
+{% endblock %}

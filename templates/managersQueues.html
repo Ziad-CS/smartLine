@@ -5,32 +5,217 @@
 {% endblock %}
 
 {% block main %}
-  <div>
-    <h1> Queues </h1>
-    <p></p>
-  </div>
-  <div>
-    <div> {{ active }} of {{ prov_queues }} </div>
-    <div> waiting : {{ waiting }} </div>
-    <div> serving : {{ serving }} </div>
-    <div> ~ {{ total_avg_wait | near }} min</div>
-  </div>
-  <div>
-    <div></div>
-    <div></div>
-  </div>
-  <div>
-    {% for prov in data %}
+  <div class="container-fluid py-4">
+
+    <!-- Page Header -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
       <div>
-        {{ prov['prov_name'] }}
-        {{ prov['serving_name'] }}
-        {{ prov['ago'] | near}}
-        {{ prov['waiting'] }}
-        {{ prov['service'] }}
-        {{ prov['avg'] | near}}
-        {{ prov['start'] }}
-        {{ prov['status'] }}
+        <h1 class="fw-bold mb-2" style="color: #0b2545;">Queues</h1>
+        <p class="text-secondary mb-0">Monitor queue activity and waiting times across your providers.</p>
       </div>
-    {% endfor %}
+
+      <div class="d-flex align-items-center gap-2">
+        <span class="badge rounded-pill px-3 py-2"
+              style="background-color: #e8f0f8; color: #0b2545;">
+          <i class="bi bi-activity me-1"></i>
+          Live Overview
+        </span>
+      </div>
+    </div>
+
+    <!-- Overview Statistics -->
+    <div class="row g-3 mb-4">
+
+      <div class="col-12 col-sm-6 col-xl-3">
+        <div class="card border-0 shadow-sm h-100 rounded-4">
+          <div class="card-body p-4">
+            <div class="d-flex justify-content-between align-items-start mb-3">
+              <div>
+                <p class="text-secondary small fw-semibold mb-1">Active Queues</p>
+                <h3 class="fw-bold mb-0" style="color: #0b2545;">
+                  {{ active }} <span class="text-secondary fs-6 fw-normal">/ {{ prov_queues }}</span>
+                </h3>
+              </div>
+              <div class="rounded-3 p-3" style="background-color: #e8f0f8; color: #0b2545;">
+                <i class="bi bi-diagram-3 fs-5"></i>
+              </div>
+            </div>
+            <div class="progress" style="height: 5px;">
+              <div class="progress-bar"
+                   style="--w : {{ (active / prov_queues * 100) if prov_queues else 0 }}%; background-color: #0b2545; width: var(--w);">
+              </div>
+            </div>
+            <small class="text-secondary mt-2 d-block">Currently active provider queues</small>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12 col-sm-6 col-xl-3">
+        <div class="card border-0 shadow-sm h-100 rounded-4">
+          <div class="card-body p-4">
+            <div class="d-flex justify-content-between align-items-start mb-3">
+              <div>
+                <p class="text-secondary small fw-semibold mb-1">Waiting</p>
+                <h3 class="fw-bold mb-0 text-warning">{{ waiting }}</h3>
+              </div>
+              <div class="rounded-3 p-3 bg-warning bg-opacity-10 text-warning">
+                <i class="bi bi-hourglass-split fs-5"></i>
+              </div>
+            </div>
+            <p class="text-secondary small mb-0">Customers waiting for service</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12 col-sm-6 col-xl-3">
+        <div class="card border-0 shadow-sm h-100 rounded-4">
+          <div class="card-body p-4">
+            <div class="d-flex justify-content-between align-items-start mb-3">
+              <div>
+                <p class="text-secondary small fw-semibold mb-1">Currently Serving</p>
+                <h3 class="fw-bold mb-0 text-success">{{ serving }}</h3>
+              </div>
+              <div class="rounded-3 p-3 bg-success bg-opacity-10 text-success">
+                <i class="bi bi-person-check fs-5"></i>
+              </div>
+            </div>
+            <p class="text-secondary small mb-0">Customers being served now</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12 col-sm-6 col-xl-3">
+        <div class="card border-0 shadow-sm h-100 rounded-4">
+          <div class="card-body p-4">
+            <div class="d-flex justify-content-between align-items-start mb-3">
+              <div>
+                <p class="text-secondary small fw-semibold mb-1">Average Waiting Time</p>
+                <h3 class="fw-bold mb-0" style="color: #0b2545;">
+                  {{ total_avg_wait | near }} <span class="fs-6 fw-normal text-secondary">min</span>
+                </h3>
+              </div>
+              <div class="rounded-3 p-3" style="background-color: #e8f0f8; color: #0b2545;">
+                <i class="bi bi-clock-history fs-5"></i>
+              </div>
+            </div>
+            <p class="text-secondary small mb-0">Estimated waiting time</p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Queue Details -->
+    <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+
+      <div class="card-header bg-white border-0 px-4 pt-4 pb-3">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
+          <div>
+            <h5 class="fw-bold mb-1" style="color: #0b2545;">Provider Queues</h5>
+            <p class="text-secondary small mb-0">Current status and service details for each provider.</p>
+          </div>
+          <span class="badge rounded-pill bg-light text-dark border px-3 py-2">
+            {{ data | length }} Providers
+          </span>
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead style="background-color: #f5f7fa;">
+            <tr>
+              <th class="px-4 py-3 text-secondary small text-nowrap">Provider</th>
+              <th class="py-3 text-secondary small text-nowrap">Now Serving</th>
+              <th class="py-3 text-secondary small text-nowrap">Waiting</th>
+              <th class="py-3 text-secondary small text-nowrap">Service</th>
+              <th class="py-3 text-secondary small text-nowrap">Avg. Service Time</th>
+              <th class="py-3 text-secondary small text-nowrap">Started At</th>
+              <th class="py-3 text-secondary small text-nowrap">Status</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {% for prov in data %}
+              <tr>
+                <td class="px-4 py-3">
+                  <div class="d-flex align-items-center gap-3">
+                    <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                         style="width: 42px; height: 42px; background-color: #e8f0f8; color: #0b2545;">
+                      <i class="bi bi-person-badge fs-5"></i>
+                    </div>
+                    <div class="fw-semibold text-nowrap" style="color: #0b2545;">
+                      {{ prov['prov_name'] }}
+                    </div>
+                  </div>
+                </td>
+
+                <td class="py-3">
+                  <div class="fw-semibold text-dark">{{ prov['serving_name'] }}</div>
+                  <small class="text-secondary">
+                    <i class="bi bi-clock me-1"></i>{{ prov['ago'] | near }}
+                  </small>
+                </td>
+
+                <td class="py-3">
+                  <span class="badge rounded-pill bg-warning bg-opacity-10 text-dark px-3 py-2">
+                    <i class="bi bi-people me-1"></i>{{ prov['waiting'] }}
+                  </span>
+                </td>
+
+                <td class="py-3">
+                  <span class="text-secondary">{{ prov['service'] }}</span>
+                </td>
+
+                <td class="py-3 text-nowrap">
+                  <span class="fw-semibold" style="color: #0b2545;">
+                    {{ prov['avg'] | near }}
+                  </span>
+                  <small class="text-secondary">min</small>
+                </td>
+
+                <td class="py-3 text-nowrap">
+                  <small class="text-secondary">{{ prov['start'] }}</small>
+                </td>
+
+                <td class="py-3">
+                  {% if prov['status'] == 'active' %}
+                    <span class="badge rounded-pill bg-success bg-opacity-10 text-success px-3 py-2">
+                      <i class="bi bi-check-circle me-1"></i>Active
+                    </span>
+                  {% elif prov['status'] == 'closed' %}
+                    <span class="badge rounded-pill bg-secondary bg-opacity-10 text-secondary px-3 py-2">
+                      <i class="bi bi-x-circle me-1"></i>Closed
+                    </span>
+                  {% else %}
+                    <span class="badge rounded-pill bg-light text-dark border px-3 py-2">
+                      {{ prov['status'] }}
+                    </span>
+                  {% endif %}
+                </td>
+              </tr>
+            {% else %}
+              <tr>
+                <td colspan="7" class="text-center py-5">
+                  <div class="mb-3">
+                    <i class="bi bi-inbox display-4 text-secondary opacity-50"></i>
+                  </div>
+                  <h6 class="fw-bold mb-2" style="color: #0b2545;">No Queues Found</h6>
+                  <p class="text-secondary small mb-0">Provider queue information will appear here when available.</p>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card-footer bg-white border-0 px-4 py-3">
+        <small class="text-secondary">
+          <i class="bi bi-info-circle me-1"></i>
+          Waiting times are estimates and may change as services are completed.
+        </small>
+      </div>
+
+    </div>
+
   </div>
 {% endblock %}

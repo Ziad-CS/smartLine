@@ -1,14 +1,74 @@
 {% extends "layout.html" %}
 
 {% block title %}
-    guest
+    Guest
 {% endblock %}
 
 {% block main %}
-    <form action="/guest" method="post">
-        <div class="mb-3">
-            <input autocomplete="off" autofocus class="form-control mx-auto w-auto" name="name" placeholder="your name" type="text" id="name">
+<div class="container py-5">
+  <div class="row justify-content-center align-items-center">
+    <div class="col-12 col-sm-10 col-md-7 col-lg-5 col-xl-4">
+
+      <div class="text-center mb-4">
+        <div class="d-inline-flex align-items-center justify-content-center rounded-4 mb-3"
+             style="width: 76px; height: 76px; background-color: #e8f0f8; color: #0b2545;">
+          <i class="bi bi-person-circle display-5"></i>
         </div>
-        <input class="btn btn-primary" type="submit" value="Continue as Guest"></input>
-    </form>
+
+        <h1 class="fw-bold mb-2" style="color: #0b2545;">Continue as Guest</h1>
+        <p class="text-secondary mb-0">
+          Get started with SmartLine without creating an account.
+        </p>
+      </div>
+
+      <div class="card border-0 shadow-sm rounded-4">
+        <div class="card-body p-4 p-md-5">
+
+          <form action="/guest" method="post">
+
+            <div class="form-floating mb-4">
+              <input autocomplete="off"
+                     autofocus
+                     class="form-control"
+                     name="name"
+                     placeholder="Your Name"
+                     type="text"
+                     id="name"
+                     required>
+              <label for="name">
+                <i class="bi bi-person me-2"></i>Your Name
+              </label>
+            </div>
+
+            <button class="btn btn-primary w-100 py-2 fw-semibold rounded-3"
+                    type="submit">
+              Continue as Guest
+              <i class="bi bi-arrow-right ms-2"></i>
+            </button>
+
+          </form>
+
+          <div class="position-relative my-4">
+            <hr class="text-secondary opacity-25">
+            <span class="position-absolute top-50 start-50 translate-middle bg-white px-3 small text-secondary">
+              OR
+            </span>
+          </div>
+
+          <a href="/login"
+             class="btn btn-outline-secondary w-100 py-2 fw-semibold rounded-3">
+            <i class="bi bi-box-arrow-in-right me-2"></i>Log In
+          </a>
+
+        </div>
+      </div>
+
+      <p class="text-center text-secondary small mt-4 mb-0">
+        <i class="bi bi-info-circle me-1"></i>
+        Guest access has limited features.
+      </p>
+
+    </div>
+  </div>
+</div>
 {% endblock %}

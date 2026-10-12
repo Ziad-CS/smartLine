@@ -1,0 +1,436 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Manager Reports
+{% endblock %}
+
+{% block main %}
+<div class="container-fluid py-4">
+
+    <!-- Header & Period Filter -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+        <div>
+            <h1 class="h3 fw-bold mb-1">Reports & Analytics</h1>
+            <p class="text-secondary mb-0">
+                Historical performance, demand patterns, and customer satisfaction.
+            </p>
+        </div>
+
+        <div class="d-flex flex-wrap align-items-center gap-2">
+            <!-- Period Selector -->
+            <form action="{{ url_for('managerReports') }}" method="get" id="periodForm" class="d-flex align-items-center gap-2">
+                <label for="periodSelect" class="small fw-semibold text-secondary mb-0">Period:</label>
+                <select name="period" id="periodSelect" class="form-select form-select-sm" onchange="this.form.submit()">
+                    <option value="all" {% if period == 'all' %}selected{% endif %}>All Time</option>
+                    <option value="today" {% if period == 'today' %}selected{% endif %}>Today</option>
+                    <option value="week" {% if period == 'week' %}selected{% endif %}>This Week</option>
+                    <option value="month" {% if period == 'month' %}selected{% endif %}>This Month</option>
+                    <option value="year" {% if period == 'year' %}selected{% endif %}>This Year</option>
+                </select>
+            </form>
+
+            <a href="{{ url_for('managerDashboard') }}" class="btn btn-sm btn-outline-primary">
+                <i class="bi bi-arrow-left me-1"></i> Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Overview Cards with Min/Max breakdown -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-xl-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <p class="text-secondary small mb-1">Completed Services</p>
+                    <h2 class="h3 fw-bold mb-1 text-navy">
+                        {{ overview.completed_count or 0 }}
+                    </h2>
+                    <small class="text-muted">Total logged tickets</small>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-6 col-xl-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <p class="text-secondary small mb-1">Avg Service Time</p>
+                    <h2 class="h3 fw-bold mb-1 text-navy">
+                        {% if overview.avg_service_minutes is not none %}
+                            {{ overview.avg_service_minutes | near }} <small class="fs-6 text-secondary">min</small>
+                        {% else %}
+                            —
+                        {% endif %}
+                    </h2>
+                    <small class="text-secondary">
+                        Range: 
+                        {% if overview.min_service_minutes is not none %}
+                            {{ overview.min_service_minutes | near }} - {{ overview.max_service_minutes | near }} min
+                        {% else %}
+                            —
+                        {% endif %}
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-6 col-xl-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <p class="text-secondary small mb-1">Avg Waiting Time</p>
+                    <h2 class="h3 fw-bold mb-1 text-navy">
+                        {% if waiting_stats.avg_wait_minutes is not none %}
+                            {{ waiting_stats.avg_wait_minutes | near }} <small class="fs-6 text-secondary">min</small>
+                        {% else %}
+                            —
+                        {% endif %}
+                    </h2>
+                    <small class="text-secondary">
+                        Range: 
+                        {% if waiting_stats.min_wait_minutes is not none %}
+                            {{ waiting_stats.min_wait_minutes | near }} - {{ waiting_stats.max_wait_minutes | near }} min
+                        {% else %}
+                            —
+                        {% endif %}
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-6 col-xl-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <p class="text-secondary small mb-1">Average Satisfaction</p>
+                    <h2 class="h3 fw-bold mb-1 text-navy">
+                        {% if satisfaction.avg_rating is not none %}
+                            {{ satisfaction.avg_rating | near }} <small class="fs-6 text-warning"><i class="bi bi-star-fill"></i></small>
+                        {% else %}
+                            —
+                        {% endif %}
+                    </h2>
+                    <small class="text-secondary">
+                        {{ satisfaction.rating_count or 0 }} total ratings
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden containers for chart data -->
+    <script id="dailyTrendsData" type="application/json">
+      {{ (daily_trends if daily_trends is defined and daily_trends else []) | tojson }}
+    </script>
+    <script id="ratingDistData" type="application/json">
+      {{ (rating_distribution if rating_distribution is defined and rating_distribution else []) | tojson }}
+    </script>
+
+    <script id="peakHoursData" type="application/json">
+      {{ (peak_hours if peak_hours is defined and peak_hours else []) | tojson }}
+    </script>
+
+    <!-- Daily Trends & Rating Distribution Charts -->
+    <div class="row g-3 mb-4">
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <h2 class="h5 fw-bold mb-3">Daily Service & Timing Trends</h2>
+                    <div style="height: 320px;">
+                        <canvas id="dailyTrendsChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <h2 class="h5 fw-bold mb-3">Rating Breakdown</h2>
+                    <div style="height: 320px;">
+                        <canvas id="ratingChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Peak Traffic Hours Chart -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                    <h2 class="h5 fw-bold mb-1">Peak Traffic Hours</h2>
+                    <p class="text-secondary small mb-0">Distribution of customer joins across the hours of the day</p>
+                </div>
+                <i class="bi bi-clock-history fs-4 text-primary"></i>
+            </div>
+            <div style="height: 260px;">
+                <canvas id="peakHoursChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Service Performance Table -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body">
+            <h2 class="h5 fw-bold mb-3">Service Breakdown</h2>
+
+            {% if service_performance %}
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Service</th>
+                                <th>Completed</th>
+                                <th>Avg. Service (min)</th>
+                                <th>Avg. Wait (min)</th>
+                                <th>Customer Rating</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for service in service_performance %}
+                                <tr>
+                                    <td class="fw-semibold">{{ service.service_name or "General / Unspecified" }}</td>
+                                    <td>{{ service.completed_count or 0 }}</td>
+                                    <td>
+                                        {% if service.avg_service_minutes is not none %}
+                                            {{ service.avg_service_minutes | near }} min
+                                        {% else %}
+                                            —
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if service.avg_wait_minutes is not none %}
+                                            {{ service.avg_wait_minutes | near }} min
+                                        {% else %}
+                                            —
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if service.avg_rating is not none %}
+                                            <span class="text-warning fw-semibold">{{ service.avg_rating | near }} <i class="bi bi-star-fill"></i></span>
+                                            <small class="text-secondary">({{ service.rating_count }})</small>
+                                        {% else %}
+                                            <span class="text-muted">—</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p class="text-secondary mb-0">
+                    No data recorded for services in this period.
+                </p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Provider Performance Table -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body">
+            <h2 class="h5 fw-bold mb-3">Provider Performance Breakdown</h2>
+
+            {% if provider_performance %}
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Provider</th>
+                                <th>Completed</th>
+                                <th>Avg. Service (min)</th>
+                                <th>Avg. Wait (min)</th>
+                                <th>Customer Rating</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for provider in provider_performance %}
+                                <tr>
+                                    <td class="fw-semibold">{{ provider.provider_name }}</td>
+                                    <td>{{ provider.completed_count or 0 }}</td>
+                                    <td>
+                                        {% if provider.avg_service_minutes is not none %}
+                                            {{ provider.avg_service_minutes | near }} min
+                                        {% else %}
+                                            —
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if provider.avg_wait_minutes is not none %}
+                                            {{ provider.avg_wait_minutes | near }} min
+                                        {% else %}
+                                            —
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if provider.avg_rating is not none %}
+                                            <span class="text-warning fw-semibold">{{ provider.avg_rating | near }} <i class="bi bi-star-fill"></i></span>
+                                            <small class="text-secondary">({{ provider.rating_count }})</small>
+                                        {% else %}
+                                            <span class="text-muted">—</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p class="text-secondary mb-0">
+                    No provider historical records available for this period.
+                </p>
+            {% endif %}
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+    // 1. Daily trends chart
+    const trendsPayload = JSON.parse(document.getElementById("dailyTrendsData").textContent || "[]");
+    const dailyLabels = trendsPayload.map(item => item.service_date);
+    const dailyCompleted = trendsPayload.map(item => item.completed_count || 0);
+    const dailyServiceTime = trendsPayload.map(item => item.avg_service_minutes ? Number(item.avg_service_minutes.toFixed(1)) : 0);
+    const dailyWaitTime = trendsPayload.map(item => item.avg_wait_minutes ? Number(item.avg_wait_minutes.toFixed(1)) : 0);
+
+    const trendsCanvas = document.getElementById("dailyTrendsChart");
+    if (trendsCanvas) {
+        new Chart(trendsCanvas, {
+            type: "line",
+            data: {
+                labels: dailyLabels,
+                datasets: [
+                    {
+                        label: "Completed Services",
+                        data: dailyCompleted,
+                        yAxisID: "y",
+                        borderColor: "#0c206d",
+                        backgroundColor: "#0c206d",
+                        tension: 0.25
+                    },
+                    {
+                        label: "Avg. Service Time (min)",
+                        data: dailyServiceTime,
+                        yAxisID: "y1",
+                        borderColor: "#F27A3D",
+                        backgroundColor: "#F27A3D",
+                        tension: 0.25
+                    },
+                    {
+                        label: "Avg. Wait Time (min)",
+                        data: dailyWaitTime,
+                        yAxisID: "y1",
+                        borderColor: "#198754",
+                        backgroundColor: "#198754",
+                        tension: 0.25
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: "index",
+                    intersect: false
+                },
+                scales: {
+                    y: {
+                        type: "linear",
+                        position: "left",
+                        beginAtZero: true,
+                        ticks: { precision: 0 },
+                        title: { display: true, text: "Completed Services" }
+                    },
+                    y1: {
+                        type: "linear",
+                        position: "right",
+                        beginAtZero: true,
+                        grid: { drawOnChartArea: false },
+                        title: { display: true, text: "Minutes" }
+                    }
+                }
+            }
+        });
+    }
+
+    // 2. Rating breakdown chart (1 to 5 stars)
+    const ratingPayload = JSON.parse(document.getElementById("ratingDistData").textContent || "[]");
+    const fullRatingMap = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+    ratingPayload.forEach(item => {
+        if (item.rating && fullRatingMap.hasOwnProperty(item.rating)) {
+            fullRatingMap[item.rating] = item.rating_count || 0;
+        }
+    });
+
+    const ratingLabels = Object.keys(fullRatingMap).map(r => `${r} Star${r === "1" ? "" : "s"}`);
+    const ratingCounts = Object.values(fullRatingMap);
+
+    const ratingCanvas = document.getElementById("ratingChart");
+    if (ratingCanvas) {
+        new Chart(ratingCanvas, {
+            type: "bar",
+            data: {
+                labels: ratingLabels,
+                datasets: [{
+                    label: "Number of Ratings",
+                    data: ratingCounts,
+                    backgroundColor: "#0c206d",
+                    borderRadius: 5
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { precision: 0 }
+                    }
+                },
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+    }
+
+    // 3. Peak traffic hours chart
+    try {
+        const peakEl = document.getElementById("peakHoursData");
+        const peakData = peakEl ? JSON.parse(peakEl.textContent || "[]") : [];
+        const peakCanvas = document.getElementById("peakHoursChart");
+
+        if (peakCanvas && peakData.length > 0) {
+            new Chart(peakCanvas, {
+                type: "bar",
+                data: {
+                    labels: peakData.map(d => d.hour_label),
+                    datasets: [{
+                        label: "Queue Joins",
+                        data: peakData.map(d => d.count),
+                        backgroundColor: "#F27A3D",
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { precision: 0 }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false }
+                    }
+                }
+            });
+        }
+    } catch (err) {
+        console.error("Error rendering Peak Hours chart:", err);
+    }
+</script>
+{% endblock %}

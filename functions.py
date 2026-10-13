@@ -2,6 +2,7 @@
 from flask import Flask ,redirect, request, jsonify, render_template, session, flash
 from functools import wraps
 from cs50 import SQL
+import sqlite3
 import random
 from datetime import datetime, timedelta
 import requests
@@ -13,6 +14,35 @@ from dotenv import load_dotenv
 import os
 
 load_dotenv("email.env")
+
+import os
+import sqlite3
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+def init_db(db_name="smartline.db"):
+  db_file = os.path.join(BASE_DIR, db_name)
+  
+  if os.path.exists(db_file):
+    return
+
+  conn = sqlite3.connect(db_file)
+  try:
+    for sql_filename in ("schema.sql", "seed.sql"):
+      sql_file = os.path.join(BASE_DIR, sql_filename)
+      if os.path.exists(sql_file):
+        with open(sql_file, "r", encoding="utf-8") as f:
+          script = f.read()
+        if script.strip():
+          conn.executescript(script)
+      conn.commit()
+  except Exception:
+    conn.close()
+    if os.path.exists(db_file):
+      os.remove(db_file)
+    raise
+  finally:
+    conn.close()
 
 db = SQL("sqlite:///smartline.db")
 

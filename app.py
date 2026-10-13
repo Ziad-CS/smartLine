@@ -5,7 +5,7 @@ from flask_session import Session
 import requests
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from functions import apology, login_required, guest_ban, send_otp, calculate_change, limitFloat, estimation, clear_user_session, getCities, toMinutes, get_client_ip, period_bounds, _pct, _period_ranges, _summary, _series, _last_12_months 
+from functions import init_db, login_required, guest_ban, send_otp, calculate_change, limitFloat, estimation, clear_user_session, getCities, toMinutes, get_client_ip, period_bounds, _pct, _period_ranges, _summary, _series, _last_12_months 
 from datetime import datetime, timedelta
 from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
 import random
@@ -17,6 +17,7 @@ import re
 
 # Configure application
 app = Flask(__name__)
+app.secret_key = os.environ.get("SECRET_KEY", "dev-only-change-me")
 app.config["TEMPLATES_AUTO_RELOAD"] = True
 
 # Configure session to use filesystem (instead of signed cookies)
@@ -25,6 +26,8 @@ app.config["SESSION_TYPE"] = "filesystem"
 Session(app)
 
 # Configure CS50 Library to use SQLite database
+
+init_db()
 db = SQL("sqlite:///smartline.db")
 app.jinja_env.filters["near"] = limitFloat
 
@@ -354,7 +357,7 @@ def findQueue() :
 
   with open("static/countries.json", "r", encoding="utf-8") as file:
     countries = json.load(file)
-  with open("static/EGcities.json", "r", encoding="utf-8") as file:
+  with open("static/egCities.json", "r", encoding="utf-8") as file:
     cities = json.load(file)
 
   for company in companies :
@@ -2759,7 +2762,7 @@ def updateInfoManager() :
   
   with open("static/countries.json", "r", encoding="utf-8") as file:
     countries = json.load(file)
-  with open("static/EGcities.json", "r", encoding="utf-8") as file:
+  with open("static/egCities.json", "r", encoding="utf-8") as file:
     cities = json.load(file)
   
   manager = db.execute("SELECT * FROM managers WHERE user_id = ?", session["user_id"])
@@ -3077,24 +3080,24 @@ def companyDetails() :
 @guest_ban
 def switch_role(role):
   if role == "provider":
-      check = db.execute("SELECT * FROM providers WHERE user_id = ?", session["user_id"])
-      if not check:
-          return apology("you're not a provider")
-      session["role"] = "prov"
-      return redirect("/")
-      return redirect("/provider/queue")
+    check = db.execute("SELECT * FROM providers WHERE user_id = ?", session["user_id"])
+    if not check:
+      flash("Unauthorized access", category="no")
+    session["role"] = "prov"
+    return redirect("/")
+    return redirect("/provider/queue")
 
   elif role == "manager":
-      check = db.execute("SELECT * FROM managers WHERE user_id = ?", session["user_id"])
-      if not check:
-          return apology("you're not a manager")
-      session["role"] = "manager"
-      return redirect("/")
-      return redirect("/manager/dashboard")
+    check = db.execute("SELECT * FROM managers WHERE user_id = ?", session["user_id"])
+    if not check:
+      flash("Unauthorized access", category="no")
+    session["role"] = "manager"
+    return redirect("/")
+    return redirect("/manager/dashboard")
   else:
-      session["role"] = "user"
-      return redirect("/")
-      return redirect("/find")
+    session["role"] = "user"
+    return redirect("/")
+    return redirect("/find")
 
 
     # * For load Profile page

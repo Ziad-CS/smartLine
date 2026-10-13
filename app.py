@@ -5,9 +5,8 @@ from flask_session import Session
 import requests
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from functions import apology, login_required, guest_ban, send_otp, calculate_change, limitFloat, estimation, clear_user_session, getCities, toMinutes, get_client_ip, period_bounds
+from functions import apology, login_required, guest_ban, send_otp, calculate_change, limitFloat, estimation, clear_user_session, getCities, toMinutes, get_client_ip, period_bounds, _pct, _period_ranges, _summary, _series, _last_12_months 
 from datetime import datetime, timedelta
-# from zoneinfo import ZoneInfo
 from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
 import random
 import string
@@ -69,10 +68,9 @@ def inject_roles():
   return dict(my_roles=my_roles, comp= "", prov_id=prov)
 
 @app.route("/")
-@login_required
 def index():
-  print("the srev ldsajo = " + str(session.get("serv_count", 4)))
-  return apology("home")
+  
+  return render_template("home.html")
 
 
 # For all roles
@@ -268,7 +266,6 @@ def logout():
 # For customer Role
 
 @app.route("/customer/findQueue", methods=["GET"])
-@login_required
 def findQueue() :
   customer = ""
   if session.get("login_state", -1) == 0 :
@@ -416,7 +413,6 @@ def findQueue() :
 
 
 @app.route("/customer/company/<comp_id>", methods=["GET"])
-@login_required
 def QueuesOfCompany(comp_id) :
   company = db.execute("SELECT * FROM companies WHERE id = ?", comp_id)[0]
   # ! comp data
@@ -1108,23 +1104,178 @@ def customerHistory(user_id) :
 @login_required
 @guest_ban
 def providerDashboard():
+
+  MIN_SERVICES_FOR_INSIGHTS = 20
+  MIN_RATINGS_PER_MONTH = 5
+
+  _VALID = """
+    sl.start_time IS NOT NULL
+    AND sl.end_time IS NOT NULL
+    AND julianday(sl.end_time) > julianday(sl.start_time)
+  """
+  _WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+
   # * Check provider role
   if session.get("role") != "prov":
     flash("Unauthorized access", category="no")
     return redirect("/")
+
   # * Get provider account
   provider = db.execute(
     "SELECT * FROM providers WHERE user_id = ?",
     session["user_id"]
   )
   if not provider:
-    flash("provider account not found.", category="no")
+    flash("Provider account not found.", category="no")
     return redirect("/")
+  provider_id = provider[0]["id"]
 
+  # * Time range
+  period = request.args.get("period", "month")
+  if period not in ("week", "month", "year"):
+    period = "month"
+  cur_start, cur_end, prev_start, prev_end, gran = _period_ranges(period)
+
+  # * All-time total (for the empty state + insights threshold)
+  total_completed = db.execute(f"""
+    SELECT COUNT(*) AS total
+    FROM service_logs AS sl
+    JOIN queues AS q ON q.id = sl.queue_id
+    WHERE q.provider_id = ? AND {_VALID}
+  """, provider_id)[0]["total"]
+
+  if total_completed == 0:
+    return render_template(
+      "providerDashboard.html",
+      has_data=False, period=period
+    )
+
+  # * Summaries + comparison with previous period
+  current = _summary(provider_id, cur_start, cur_end)
+  previous = _summary(provider_id, prev_start, prev_end)
+
+  speed_change = _pct(current["avg_minutes"], previous["avg_minutes"])
+  comparison = {
+    "completed_change": _pct(current["completed"], previous["completed"]),
+    # positive = faster than before
+    "speed_improvement": -speed_change if speed_change is not None else None,
+    "rating_diff": (
+      round(current["avg_rating"] - previous["avg_rating"], 2)
+      if current["avg_rating"] is not None and previous["avg_rating"] is not None
+      else None
+    ),
+    "has_previous": previous["completed"] > 0
+  }
+
+  # * Trend series (current vs previous period)
+  cur_series = _series(provider_id, cur_start, cur_end, gran)
+  prev_series = _series(provider_id, prev_start, prev_end, gran)
+
+  # * Last 12 months (rating trend, workload pattern, best month)
+  monthly = _last_12_months(provider_id)
+  eligible = [
+    m for m in monthly
+    if m["avg_rating"] is not None and m["rating_count"] >= MIN_RATINGS_PER_MONTH
+  ]
+  best_rated = max(eligible, key=lambda m: (m["avg_rating"], m["rating_count"])) if eligible else None
+
+  # * Work patterns (all time)
+  hourly_rows = db.execute(f"""
+    SELECT CAST(strftime('%H', sl.start_time) AS INTEGER) AS h, COUNT(*) AS c
+    FROM service_logs AS sl
+    JOIN queues AS q ON q.id = sl.queue_id
+    WHERE q.provider_id = ? AND {_VALID}
+    GROUP BY h
+  """, provider_id)
+  hourly = [0] * 24
+  for r in hourly_rows:
+    if r["h"] is not None:
+      hourly[r["h"]] = r["c"]
+
+  weekday_rows = db.execute(f"""
+    SELECT CAST(strftime('%w', sl.start_time) AS INTEGER) AS d, COUNT(*) AS c
+    FROM service_logs AS sl
+    JOIN queues AS q ON q.id = sl.queue_id
+    WHERE q.provider_id = ? AND {_VALID}
+    GROUP BY d
+  """, provider_id)
+  weekday = [0] * 7
+  for r in weekday_rows:
+    if r["d"] is not None:
+      weekday[r["d"]] = r["c"]
+
+  # * Personal insights (only with enough data)
+  insights = []
+  enough_data = total_completed >= MIN_SERVICES_FOR_INSIGHTS
+
+  if enough_data:
+    current_month = datetime.now().strftime("%b %Y")
+
+    timed = [
+        m for m in monthly
+        if m["avg_minutes"] is not None
+        and m["completed"] >= 5
+        and m["label"] != current_month
+    ]
+    if len(timed) >= 2:
+      best = min(timed, key=lambda m: m["avg_minutes"])
+      insights.append({
+        "icon": "bi-stopwatch",
+        "title": "Best Performance Period",
+        "text": f"Your fastest month was {best['label']} with an average of {best['avg_minutes']} min per service."
+      })
+
+    imp = comparison["speed_improvement"]
+    if imp is not None:
+      if abs(imp) < 5:
+        text = "Your service speed is stable compared to the previous period."
+      elif imp > 0:
+        text = f"You are {abs(imp)}% faster than the previous period."
+      else:
+        text = f"Your services are taking {abs(imp)}% longer than the previous period."
+      insights.append({"icon": "bi-speedometer2", "title": "Service Speed", "text": text})
+
+    diff = comparison["rating_diff"]
+    if diff is not None:
+      if abs(diff) < 0.1:
+        text = "Your customer ratings are steady compared to the previous period."
+      elif diff > 0:
+        text = f"Your average rating improved by {diff} stars."
+      else:
+        text = f"Your average rating dropped by {abs(diff)} stars."
+      insights.append({"icon": "bi-star", "title": "Customer Satisfaction", "text": text})
+
+    if sum(weekday) > 0 and sum(hourly) > 0:
+      busiest_day = _WEEKDAYS[weekday.index(max(weekday))]
+      peak_h = hourly.index(max(hourly))
+      peak_label = f"{peak_h % 12 or 12} {'AM' if peak_h < 12 else 'PM'}"
+      insights.append({
+        "icon": "bi-clock-history",
+        "title": "Work Pattern",
+        "text": f"You are busiest on {busiest_day}s, with the peak around {peak_label}."
+      })
+
+  charts = {
+    "gran": gran,
+    "current": cur_series,
+    "previous": prev_series if comparison["has_previous"] else None,
+    "monthly": monthly,
+    "hourly": hourly,
+    "weekday": {"labels": _WEEKDAYS, "values": weekday},
+  }
 
   return render_template(
-    "managerDashboard.html",
-
+    "providerDashboard.html",
+    has_data=True,
+    period=period,
+    current=current,
+    comparison=comparison,
+    best_rated=best_rated,
+    insights=insights,
+    enough_data=enough_data,
+    min_services=MIN_SERVICES_FOR_INSIGHTS,
+    total_completed=total_completed,
+    charts=charts
   )
 
 @app.route("/provider/Queue", methods=["GET"])
@@ -2332,8 +2483,11 @@ def managerReports():
             progress=(total_completed / target_services) * 100
         )
 
-    period = request.args.get("period", "all")  # all / today / week / month / year
+    period = request.args.get("period", "all")
+    if period not in ("all", "today", "week", "month", "year"):
+        period = "all"
     current_filter, _ = period_bounds(period)
+    current_filter = current_filter or ""
 
     overview = db.execute(f"""
         SELECT

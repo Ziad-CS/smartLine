@@ -3,7 +3,7 @@ from flask import Flask ,redirect, request, jsonify, render_template, session, f
 from functools import wraps
 from cs50 import SQL
 import random
-from datetime import datetime
+from datetime import datetime, timedelta
 import requests
 import json
 
@@ -225,3 +225,174 @@ def period_bounds(period):
         current = ""
         previous = None
     return current, previous
+
+# For provider Dashboard
+DT_FMT = "%Y-%m-%d %H:%M:%S"
+MIN_SERVICES_FOR_INSIGHTS = 20   # أقل عدد خدمات قبل ما نعرض استنتاجات
+MIN_RATINGS_PER_MONTH = 5        # أقل عدد تقييمات عشان الشهر يدخل في Best-Rated
+
+_VALID = """
+  sl.start_time IS NOT NULL
+  AND sl.end_time IS NOT NULL
+  AND julianday(sl.end_time) > julianday(sl.start_time)
+"""
+_MINUTES = "(julianday(sl.end_time) - julianday(sl.start_time)) * 1440.0"
+
+
+def _pct(cur, prev):
+  if cur is None or prev is None or prev == 0:
+    return None
+  return round((cur - prev) / prev * 100, 1)
+
+
+def _period_ranges(period):
+  now = datetime.now()
+  today = now.replace(hour=0, minute=0, second=0, microsecond=0)
+  tomorrow = today + timedelta(days=1)
+
+  if period == "week":
+    cur_start = today - timedelta(days=6)
+    prev_start = cur_start - timedelta(days=7)
+
+    return (
+      cur_start, tomorrow,
+      prev_start, cur_start,
+      "day"
+    )
+
+  if period == "year":
+    cur_start = today.replace(month=1, day=1)
+    cur_end = tomorrow
+
+    prev_start = cur_start.replace(year=cur_start.year - 1)
+
+    # Match the same elapsed period in the previous year.
+    elapsed_days = (tomorrow - cur_start).days
+    prev_end = min(
+        prev_start + timedelta(days=elapsed_days),
+        cur_start
+    )
+
+    return cur_start, cur_end, prev_start, prev_end, "month"
+
+  # Current month compared with the same elapsed period
+  # of the previous month.
+  cur_start = today.replace(day=1)
+  cur_end = tomorrow
+
+  if cur_start.month == 1:
+    prev_start = cur_start.replace(
+      year=cur_start.year - 1,
+      month=12
+    )
+  else:
+    prev_start = cur_start.replace(
+      month=cur_start.month - 1
+    )
+
+  elapsed_days = (tomorrow - cur_start).days
+  prev_end = min(
+    prev_start + timedelta(days=elapsed_days),
+    cur_start
+  )
+
+  return cur_start, cur_end, prev_start, prev_end, "day"
+
+
+def _summary(provider_id, start, end):
+  row = db.execute(f"""
+    SELECT
+      COUNT(*) AS completed,
+      AVG({_MINUTES}) AS avg_minutes,
+      AVG(sl.stars) AS avg_rating,
+      COUNT(sl.stars) AS rating_count
+    FROM service_logs AS sl
+    JOIN queues AS q ON q.id = sl.queue_id
+    WHERE q.provider_id = ?
+      AND {_VALID}
+      AND sl.end_time >= ? AND sl.end_time < ?
+  """, provider_id, start.strftime(DT_FMT), end.strftime(DT_FMT))[0]
+  return row
+
+
+def _series(provider_id, start, end, gran):
+  """Continuous series (None for empty buckets) so charts show gaps, not zeros."""
+  key_fmt = "%Y-%m-%d" if gran == "day" else "%Y-%m"
+  rows = db.execute(f"""
+    SELECT
+      strftime('{key_fmt}', sl.end_time) AS k,
+      COUNT(*) AS completed,
+      AVG({_MINUTES}) AS avg_minutes,
+      AVG(sl.stars) AS avg_rating,
+      COUNT(sl.stars) AS rating_count
+    FROM service_logs AS sl
+    JOIN queues AS q ON q.id = sl.queue_id
+    WHERE q.provider_id = ?
+      AND {_VALID}
+      AND sl.end_time >= ? AND sl.end_time < ?
+    GROUP BY k
+  """, provider_id, start.strftime(DT_FMT), end.strftime(DT_FMT))
+  by_key = {r["k"]: r for r in rows}
+
+  labels, completed, minutes, ratings = [], [], [], []
+  if gran == "day":
+    limit = min(end, datetime.now().replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)) \
+      if end > datetime.now() else end
+    d = start
+    while d < limit:
+      r = by_key.get(d.strftime("%Y-%m-%d"))
+      labels.append(d.strftime("%d %b"))
+      completed.append(r["completed"] if r else 0)
+      minutes.append(round(r["avg_minutes"], 1) if r and r["avg_minutes"] is not None else None)
+      ratings.append(round(r["avg_rating"], 2) if r and r["avg_rating"] is not None else None)
+      d += timedelta(days=1)
+  else:
+    for m in range(1, 13):
+      r = by_key.get(f"{start.year}-{m:02d}")
+      labels.append(datetime(start.year, m, 1).strftime("%b"))
+      completed.append(r["completed"] if r else 0)
+      minutes.append(round(r["avg_minutes"], 1) if r and r["avg_minutes"] is not None else None)
+      ratings.append(round(r["avg_rating"], 2) if r and r["avg_rating"] is not None else None)
+
+  return {"labels": labels, "completed": completed, "minutes": minutes, "ratings": ratings}
+
+
+def _last_12_months(provider_id):
+  today = datetime.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+  months = []
+  y, m = today.year, today.month
+  for _ in range(12):
+    months.append((y, m))
+    m -= 1
+    if m == 0:
+      y, m = y - 1, 12
+  months.reverse()
+
+  start = datetime(months[0][0], months[0][1], 1)
+  rows = db.execute(f"""
+    SELECT
+      strftime('%Y-%m', sl.end_time) AS k,
+      COUNT(*) AS completed,
+      AVG({_MINUTES}) AS avg_minutes,
+      AVG(sl.stars) AS avg_rating,
+      COUNT(sl.stars) AS rating_count
+    FROM service_logs AS sl
+    JOIN queues AS q ON q.id = sl.queue_id
+    WHERE q.provider_id = ?
+      AND {_VALID}
+      AND sl.end_time >= ?
+    GROUP BY k
+  """, provider_id, start.strftime(DT_FMT))
+  by_key = {r["k"]: r for r in rows}
+
+  result = []
+  for y, m in months:
+    r = by_key.get(f"{y}-{m:02d}")
+    result.append({
+      "label": datetime(y, m, 1).strftime("%b %Y"),
+      "completed": r["completed"] if r else 0,
+      "avg_minutes": round(r["avg_minutes"], 1) if r and r["avg_minutes"] is not None else None,
+      "avg_rating": round(r["avg_rating"], 2) if r and r["avg_rating"] is not None else None,
+      "rating_count": r["rating_count"] if r else 0,
+    })
+  return result

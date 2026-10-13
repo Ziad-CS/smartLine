@@ -1,9 +1,209 @@
+
 {% extends "layout.html" %}
 
-{% block title %}
-    Login
-{% endblock %}
+{% block title %}SmartLine | Know your wait before you leave{% endblock %}
 
 {% block main %}
-    
+<link rel="stylesheet" href="{{ url_for('static', filename='sl-home.css') }}">
+
+{# Role-aware main buttons #}
+{% set role = session.get("role") %}
+{% set logged = session.get("user_id") %}
+{% if not logged %}
+  {% set cta1 = {"href": "/register", "text": "Create free account"} %}
+  {% set cta2 = {"href": "/guest", "text": "Try as guest"} %}
+{% elif role == "prov" %}
+  {% set cta1 = {"href": "/provider/Queue", "text": "Open my queue"} %}
+  {% set cta2 = {"href": "/providers/history/" ~ session.get("prov_id", ""), "text": "My history"} %}
+{% elif role == "manager" %}
+  {% set cta1 = {"href": "/manager/queues", "text": "Open live queues"} %}
+  {% set cta2 = {"href": "/manager/providers", "text": "Manage providers"} %}
+{% else %}
+  {% set cta1 = {"href": "/customer/findQueue", "text": "Find a queue"} %}
+  {% set cta2 = {"href": "/customer/myQueue", "text": "My queue"} %}
+{% endif %}
+
+<div class="sl-home w-100">
+
+  <!-- 1. HERO + live estimate demo -->
+  <section class="sl-home-hero">
+    <div class="container py-5">
+      <div class="row align-items-center g-5">
+        <div class="col-lg-6">
+          <h1 class="sl-home-title">Know how long you'll wait, before you leave home.</h1>
+          <p class="sl-home-lead">SmartLine gives every queue a real wait estimate, built from how fast each provider actually works and how fast you usually are.</p>
+          <div class="d-flex flex-wrap gap-2 mt-4">
+            <a href="{{ cta1.href }}" class="btn btn-lg sl-home-btn-main">{{ cta1.text }}</a>
+            <a href="{{ cta2.href }}" class="btn btn-lg sl-home-btn-ghost">{{ cta2.text }}</a>
+          </div>
+        </div>
+
+        <div class="col-lg-6">
+          <div class="sl-home-demo rounded-4 p-4" id="demo">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <strong>Try the estimate</strong>
+              <span class="badge sl-home-badge">Live demo</span>
+            </div>
+            <div class="sl-home-line" id="line" aria-hidden="true"></div>
+
+            <label for="ahead" class="form-label mt-3 mb-1">People ahead of you: <b id="aheadVal">5</b></label>
+            <input type="range" class="form-range" id="ahead" min="0" max="12" value="5">
+
+            <label for="avg" class="form-label mb-1">Provider's average service: <b id="avgVal">8</b> min</label>
+            <input type="range" class="form-range" id="avg" min="3" max="20" value="8">
+
+            <div class="btn-group w-100 my-3" role="group" aria-label="Your pace">
+              <input type="radio" class="btn-check" name="pace" id="paceFast" value="0.7">
+              <label class="btn btn-outline-secondary" for="paceFast">I'm quick</label>
+              <input type="radio" class="btn-check" name="pace" id="paceUsual" value="1" checked>
+              <label class="btn btn-outline-secondary" for="paceUsual">Usual</label>
+              <input type="radio" class="btn-check" name="pace" id="paceSlow" value="1.4">
+              <label class="btn btn-outline-secondary" for="paceSlow">I take my time</label>
+            </div>
+
+            <div class="sl-home-result rounded-4 p-3 d-flex justify-content-between align-items-center">
+              <div>
+                <div class="small">Estimated wait</div>
+                <div class="sl-home-big"><span id="estMin">0</span> min</div>
+              </div>
+              <div class="text-end">
+                <div class="small">You'd be called around</div>
+                <div class="fw-bold fs-5" id="estClock">--:--</div>
+              </div>
+            </div>
+            <p class="small mt-3 mb-0 sl-home-muted">Same idea as the real thing: 70% the provider's recent average, 30% your own recent pace.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2. Categories -->
+  <section class="py-5">
+    <div class="container">
+      <h2 class="sl-home-h2">Queues for the places you actually wait at</h2>
+      <p class="sl-home-muted mb-4">Pick a type and see who's open near you.</p>
+      <div class="row g-3">
+        {% for c in [
+          ("clinics", "bi-heart-pulse", "Clinics & Healthcare"),
+          ("banks", "bi-bank", "Banks & Finance"),
+          ("government_offices", "bi-building", "Government Offices"),
+          ("telecom", "bi-telephone", "Telecom & Customer Service"),
+          ("edu", "bi-mortarboard", "Education"),
+          ("other", "bi-grid", "Other") ] %}
+        <div class="col-6 col-md-4">
+          <a href="/customer/findQueue?category={{ c[0] }}" class="sl-home-cat rounded-4 p-4 d-flex align-items-center gap-3">
+            <i class="bi {{ c[1] }} fs-2"></i>
+            <span class="fw-semibold">{{ c[2] }}</span>
+          </a>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+
+  <!-- 3. How it works by role -->
+  <section class="py-5 sl-home-soft">
+    <div class="container">
+      <h2 class="sl-home-h2">How it works</h2>
+      <p class="sl-home-muted mb-4">One account can be a customer, a provider and a manager. Pick a role to see its steps.</p>
+
+      <ul class="nav nav-pills gap-2 mb-4" id="roleTabs" role="tablist">
+        <li class="nav-item" role="presentation"><button class="nav-link active" data-bs-toggle="pill" data-bs-target="#tabCustomer" type="button" role="tab">Customer</button></li>
+        <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tabProvider" type="button" role="tab">Provider</button></li>
+        <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tabManager" type="button" role="tab">Manager</button></li>
+      </ul>
+
+      <div class="tab-content">
+        <div class="tab-pane fade show active" id="tabCustomer" role="tabpanel">
+          <ol class="sl-home-steps">
+            <li><b>Find a place.</b> Search by name or browse by type and city.</li>
+            <li><b>Join a queue.</b> Pick a provider, or press Join Fastest and we pick the shortest wait.</li>
+            <li><b>Watch it move.</b> Your position and estimate refresh on their own.</li>
+            <li><b>Rate the service.</b> Optional, takes one tap.</li>
+          </ol>
+        </div>
+        <div class="tab-pane fade" id="tabProvider" role="tabpanel">
+          <ol class="sl-home-steps">
+            <li><b>Link to your company.</b> Give your manager your invite code.</li>
+            <li><b>Start your shift.</b> Choose the service you're offering.</li>
+            <li><b>Call next.</b> End the service or skip someone who didn't show.</li>
+            <li><b>End your shift.</b> Anyone still waiting is served before the queue closes.</li>
+          </ol>
+        </div>
+        <div class="tab-pane fade" id="tabManager" role="tabpanel">
+          <ol class="sl-home-steps">
+            <li><b>Register your company.</b> Add category, location and opening hours.</li>
+            <li><b>List your services.</b> Customers can filter by them.</li>
+            <li><b>Add providers.</b> Enter each provider's invite code.</li>
+            <li><b>Follow the queues.</b> See live queues and each provider's history.</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4. Features -->
+  <section class="py-5">
+    <div class="container">
+      <h2 class="sl-home-h2 mb-4">What makes the number trustworthy</h2>
+      <div class="row g-4">
+        {% for f in [
+          ("bi-graph-up-arrow", "Real data, not a guess", "Estimates come from each provider's recent services, so a slow day shows up as a longer wait."),
+          ("bi-person-lines-fill", "Personal to you", "If you have history, your own pace shapes your estimate."),
+          ("bi-broadcast", "Live updates", "Your place and wait refresh automatically, no reloading."),
+          ("bi-clock-history", "Shifts, not one big line", "Each provider opens their own queue when they start working.") ] %}
+        <div class="col-md-6">
+          <div class="d-flex gap-3">
+            <div class="sl-home-icon rounded-4"><i class="bi {{ f[0] }}"></i></div>
+            <div>
+              <h3 class="h5 mb-1">{{ f[1] }}</h3>
+              <p class="sl-home-muted mb-0">{{ f[2] }}</p>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+
+  <!-- 5. FAQ -->
+  <section class="py-5 sl-home-soft">
+    <div class="container sl-home-narrow">
+      <h2 class="sl-home-h2 mb-4">Questions</h2>
+      <div class="accordion" id="faq">
+        {% for q in [
+          ("Do I need an account?", "No. You can join as a guest with just a name. Guests can use up to 3 services; after that, create a free account."),
+          ("How is my wait estimated?", "We mix the provider's average from their recent services (70%) with your own recent pace (30%). With no history, only the provider's average is used."),
+          ("What if I'm skipped?", "A provider can skip someone who doesn't show up, and that service isn't counted in the averages."),
+          ("Can I be a customer and a provider?", "Yes. One account can hold all three roles, and you switch between them from the menu.") ] %}
+        <div class="accordion-item">
+          <h3 class="accordion-header">
+            <button class="accordion-button {{ '' if loop.first else 'collapsed' }}" type="button" data-bs-toggle="collapse" data-bs-target="#faq{{ loop.index }}">{{ q[0] }}</button>
+          </h3>
+          <div id="faq{{ loop.index }}" class="accordion-collapse collapse {{ 'show' if loop.first else '' }}" data-bs-parent="#faq">
+            <div class="accordion-body">{{ q[1] }}</div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+
+  <!-- 6. Final call to action -->
+  <section class="sl-home-final text-center py-5">
+    <div class="container py-4">
+      <h2 class="sl-home-final-title">Your time is worth more than a waiting room.</h2>
+      <div class="d-flex flex-wrap justify-content-center gap-2 mt-4">
+        <a href="{{ cta1.href }}" class="btn btn-lg sl-home-btn-light">{{ cta1.text }}</a>
+        <a href="{{ cta2.href }}" class="btn btn-lg sl-home-btn-outline-light">{{ cta2.text }}</a>
+      </div>
+    </div>
+  </section>
+
+</div>
+{% endblock %}
+
+{% block js %}
+<script src="{{ url_for('static', filename='sl-home.js') }}"></script>
 {% endblock %}

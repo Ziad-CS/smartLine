@@ -199,7 +199,7 @@ function renderCities(selectedCountry) {
           if (!response.ok) {
             throw new Error("Network error");
           }
-          return response.json(); // عمل Parse تلقائي للـ JSON
+          return response.json();
         })
         .then((cities) => {
           if (cities.length === 0) {
@@ -303,7 +303,7 @@ function manageLocationMenu() {
             if (!response.ok) {
               throw new Error("Network response was not ok");
             }
-            return response.text(); // قراءة الـ String القادم من السيرفر
+            return response.text();
           })
           .then((newUrl) => {
             // let url;
@@ -647,7 +647,6 @@ document.addEventListener("DOMContentLoaded", () => {
         const oVal = open.value.trim();
         const cVal = close.value.trim();
 
-        // 1. لو دخل واحد وساب التاني فاضي: وقف فوراً
         if ((oVal && !cVal) || (!oVal && cVal)) {
           if (!oVal) showError(open, "Please provide an opening time.");
           if (!cVal) showError(close, "Please provide a closing time.");
@@ -664,7 +663,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
           let diff = closeMinutes - openMinutes;
           if (diff < 0) {
-            diff += 24 * 60; // الشيفت عدّى منتصف الليل
+            diff += 24 * 60;
           }
           if (diff < 30) {
             showError(open, "Shift must be at least 30 minutes.");
@@ -681,7 +680,6 @@ document.addEventListener("DOMContentLoaded", () => {
           }
         } 
         else {
-          // الاتنين فاضيين تماماً (مسموح)
           clearError(open);
           clearError(close);
           isopen = 1;
@@ -744,7 +742,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (!val) return;
 
-      // منع تكرار نفس اسم الخدمة
       const existing = Array.from(
         container.querySelectorAll("input[name='services[]']"),
       ).map((el) => el.value.toLowerCase());
@@ -766,7 +763,7 @@ document.addEventListener("DOMContentLoaded", () => {
           if (!response.ok) {
             throw new Error("Network error");
           }
-          return response.json(); // عمل Parse تلقائي للـ JSON
+          return response.json();
         })
         .then((services) => {
           chips.innerHTML = "";
@@ -920,3 +917,72 @@ function updateRatingText(text) {
       periodFrom.submit();
     })
   }
+
+
+
+
+  // !=========================================================================
+  // !=========================================================================
+  // !=========================================================================
+  // !=========================================================================
+  // !=========================================================================
+  // !=========================================================================
+  
+  // SmartLine home page: the "Try the estimate" demo.
+// Same blend as the real estimation(): 70% provider average + 30% personal pace.
+document.addEventListener("DOMContentLoaded", () => {
+  const ahead = document.getElementById("ahead");
+  if (!ahead) return; // not on the home page
+
+  const avg = document.getElementById("avg");
+  const aheadVal = document.getElementById("aheadVal");
+  const avgVal = document.getElementById("avgVal");
+  const estMin = document.getElementById("estMin");
+  const estClock = document.getElementById("estClock");
+  const line = document.getElementById("line");
+  const paces = document.querySelectorAll('input[name="pace"]');
+
+  let shown = -1; // how many people are currently drawn
+
+  function drawLine(n) {
+    // Rebuild only when the count changes, so new people "pop" in
+    if (n === shown) return;
+    const grew = n > shown && shown !== -1;
+    line.innerHTML = '<i class="bi bi-door-open sl-home-door"></i>';
+    for (let i = 0; i < n; i++) {
+      const p = document.createElement("span");
+      p.className = "sl-home-person";
+      if (grew && i >= shown) p.classList.add("sl-home-pop");
+      line.appendChild(p);
+    }
+    const you = document.createElement("span");
+    you.className = "sl-home-you";
+    you.textContent = "You";
+    line.appendChild(you);
+    shown = n;
+  }
+
+  function update() {
+    const n = Number(ahead.value);
+    const providerAvg = Number(avg.value);
+    const pace = Number(document.querySelector('input[name="pace"]:checked').value);
+    const myAvg = providerAvg * pace;
+
+    // Each person ahead is estimated as 70% provider + 30% your pace
+    const est = Math.round(n * (0.7 * providerAvg + 0.3 * myAvg));
+
+    aheadVal.textContent = n;
+    avgVal.textContent = providerAvg;
+    estMin.textContent = est;
+
+    const t = new Date(Date.now() + est * 60000);
+    estClock.textContent = t.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+
+    drawLine(n);
+  }
+
+  ahead.addEventListener("input", update);
+  avg.addEventListener("input", update);
+  paces.forEach((p) => p.addEventListener("change", update));
+  update();
+});

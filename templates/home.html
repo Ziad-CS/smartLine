@@ -4,7 +4,6 @@
 {% block title %}SmartLine | Know your wait before you leave{% endblock %}
 
 {% block main %}
-<link rel="stylesheet" href="{{ url_for('static', filename='sl-home.css') }}">
 
 {# Role-aware main buttons #}
 {% set role = session.get("role") %}
@@ -202,8 +201,4 @@
   </section>
 
 </div>
-{% endblock %}
-
-{% block js %}
-<script src="{{ url_for('static', filename='sl-home.js') }}"></script>
 {% endblock %}

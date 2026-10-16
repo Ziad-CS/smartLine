@@ -23,9 +23,6 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 def init_db(db_name="smartline.db"):
   db_file = os.path.join(BASE_DIR, db_name)
   
-  if os.path.exists(db_file):
-    return
-
   conn = sqlite3.connect(db_file)
   try:
     for sql_filename in ("schema.sql", "seed.sql"):

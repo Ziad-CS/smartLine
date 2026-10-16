@@ -149,7 +149,7 @@
               {# ---------- Unverified: yellow CTA first + red dot on avatar ---------- #}
               {{ user_menu(session.get('name'), 'Unverified', 'text-bg-warning',
                           dot=True,
-                          cta={'href': '/verify', 'label': 'Verify your email', 'icon': 'bi-shield-exclamation'},
+                          cta={'href': '/verification', 'label': 'Verify your email', 'icon': 'bi-shield-exclamation'},
                           show_profile=False) }}
     
             {% else %}

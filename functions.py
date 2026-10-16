@@ -124,19 +124,55 @@ def apology(message, code=400):
 def send_otp(id) :
   user = db.execute("SELECT * FROM users WHERE id = ?", id)[0]
   email_html =render_template("otp.html",name=user["name"] ,code=user["verification_code"])
+  try :
+    msg = EmailMessage()
+    msg["Subject"] = "Verify your SmartLine account"
+    msg["From"] = "smartline.authentication@gmail.com"
+    msg["To"] = user["email"]
+    msg.set_content(f"Your verification code is {user['verification_code']}. \n"
+    "This code will expire in 5 minutes.")
+    msg.add_alternative(email_html, subtype="html")
+    
+    with smtplib.SMTP("smtp.gmail.com", 587, timeout=4) as server :
+      server.starttls()
+      server.login("smartline.authentication@gmail.com", os.environ.get("GMAIL_PASSWORD"))
+      server.send_message(msg)
+  except Exception as e :
+    print(f"SMTP failed or blocked ({e}), falling back to API...")
+    url = "https://api.brevo.com/v3/smtp/email"
+    payload = {
+        "sender": {
+            "name": "SmartLine",
+            "email": "smartline.authentication@gmail.com"
+        },
+        "to": [
+            {
+                "email": user["email"],
+                "name": user["name"]
+            }
+        ],
+        "subject": "Verify your SmartLine account",
+        "htmlContent": email_html
+    }
+    headers = {
+        "accept": "application/json",
+        "api-key": os.environ.get("BREVO_API_KEY"),
+        "content-type": "application/json"
+    }
 
-  msg = EmailMessage()
-  msg["Subject"] = "Verify your SmartLine account"
-  msg["From"] = "smartline.authentication@gmail.com"
-  msg["To"] = user["email"]
-  msg.set_content(f"Your verification code is {user['verification_code']}. \n"
-  "This code will expire in 5 minutes.")
-  msg.add_alternative(email_html, subtype="html")
+    try:
+        response = requests.post(url, json=payload, headers=headers, timeout=10)
+        if response.status_code in [200, 201, 202]:
+            print(f"Email sent successfully via Fallback API to {user['email']}.")
+            return True
+        else:
+            print(f"API Fallback failed with status {response.status_code}: {response.text}")
+    except Exception as api_err:
+        print(f"API connection failed: {api_err}")
 
-  with smtplib.SMTP("smtp.gmail.com", 587) as server :
-    server.starttls()
-    server.login("smartline.authentication@gmail.com", os.environ.get("GMAIL_PASSWORD"))
-    server.send_message(msg)
+    print(f"--> [BACKUP CODE] OTP for {user['email']} is: {user['verification_code']}")
+    return False
+
 
 
 # def calculate_change(new_value, base_value):

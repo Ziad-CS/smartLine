@@ -253,7 +253,7 @@ def getCities(country) :
     except Exception as e :
       return jsonify({'error' : str(e)}), 500
   elif country == 'egypt' :
-    file_path = os.path.join(os.path.dirname(__file__), "static", "egCities.json")
+    file_path = os.path.join(os.path.dirname(__file__), "static", "EGcities.json")
     with open(file_path, "r", encoding="utf-8") as file:
       cities = json.load(file)
       return jsonify(cities), 200

@@ -21,9 +21,12 @@ import sqlite3
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 def init_db(db_name="smartline.db"):
+  return
   db_file = os.path.join(BASE_DIR, db_name)
-  
-  conn = sqlite3.connect(db_file)
+  try:
+    conn = sqlite3.connect(db_file)
+  except Exception:
+    return
   try:
     for sql_filename in ("schema.sql", "seed.sql"):
       sql_file = os.path.join(BASE_DIR, sql_filename)
@@ -40,6 +43,7 @@ def init_db(db_name="smartline.db"):
     raise
   finally:
     conn.close()
+
 
 db = SQL("sqlite:///smartline.db")
 
@@ -138,39 +142,31 @@ def send_otp(id) :
       server.login("smartline.authentication@gmail.com", os.environ.get("GMAIL_PASSWORD"))
       server.send_message(msg)
   except Exception as e :
-    print(f"SMTP failed or blocked ({e}), falling back to API...")
-    url = "https://api.brevo.com/v3/smtp/email"
-    payload = {
-        "sender": {
-            "name": "SmartLine",
-            "email": "smartline.authentication@gmail.com"
-        },
-        "to": [
-            {
-                "email": user["email"],
-                "name": user["name"]
-            }
-        ],
-        "subject": "Verify your SmartLine account",
-        "htmlContent": email_html
-    }
-    headers = {
-        "accept": "application/json",
-        "api-key": os.environ.get("BREVO_API_KEY"),
-        "content-type": "application/json"
-    }
-
     try:
-        response = requests.post(url, json=payload, headers=headers, timeout=10)
-        if response.status_code in [200, 201, 202]:
-            print(f"Email sent successfully via Fallback API to {user['email']}.")
-            return True
-        else:
-            print(f"API Fallback failed with status {response.status_code}: {response.text}")
+      response = requests.post(
+        "https://api.brevo.com/v3/smtp/email",
+        json={
+          "sender": {"name": "SmartLine", "email": "smartline.authentication@gmail.com"},
+          "to": [{"email": user["email"], "name": user["name"]}],
+          "subject": "Verify your SmartLine account",
+          "htmlContent": email_html,
+        },
+        headers={
+          "accept": "application/json",
+          "api-key": os.environ.get("BREVO_API_KEY"),
+          "content-type": "application/json",
+        },
+        timeout=10,
+      )
+      if response.status_code in (200, 201, 202):
+        return True
+      print(f"Brevo failed with status {response.status_code}: {response.text}")
     except Exception as api_err:
-        print(f"API connection failed: {api_err}")
+      print(f"Brevo connection failed: {api_err}")
 
-    print(f"--> [BACKUP CODE] OTP for {user['email']} is: {user['verification_code']}")
+    # 3) Demo-only backup, never in production
+    if os.environ.get("DEBUG_OTP") == "1":
+      print(f"--> [BACKUP CODE] OTP for {user['email']} is: {user['verification_code']}")
     return False
 
 

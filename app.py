@@ -357,7 +357,7 @@ def findQueue() :
 
   with open("static/countries.json", "r", encoding="utf-8") as file:
     countries = json.load(file)
-  with open("static/egCities.json", "r", encoding="utf-8") as file:
+  with open("static/EGCities.json", "r", encoding="utf-8") as file:
     cities = json.load(file)
 
   for company in companies :
@@ -2762,7 +2762,7 @@ def updateInfoManager() :
   
   with open("static/countries.json", "r", encoding="utf-8") as file:
     countries = json.load(file)
-  with open("static/egCities.json", "r", encoding="utf-8") as file:
+  with open("static/EGCities.json", "r", encoding="utf-8") as file:
     cities = json.load(file)
   
   manager = db.execute("SELECT * FROM managers WHERE user_id = ?", session["user_id"])

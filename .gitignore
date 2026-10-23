@@ -8,3 +8,4 @@ venv/
 .DS_Store
 flask_session/
 profileBackup.html
+smartline_past.db

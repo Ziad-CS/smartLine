@@ -207,7 +207,7 @@
           {% set items = [
             ('Dashboard', 'bi-house',          '/provider/dashboard'),
             ('My Queue',  'bi-people-fill',    '/provider/Queue'),
-            ('History',   'bi-clock-history',  '/providers/history/' ~ prov_id),
+            ('History',   'bi-clock-history',  '/providers/history/' ~ prov_id ~ '?period=all'),
             ('Profile',   'bi-person',         '/profile')
           ] %}
         {% endif %}

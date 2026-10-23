@@ -13,7 +13,7 @@
   {% set cta2 = {"href": "/guest", "text": "Try as guest"} %}
 {% elif role == "prov" %}
   {% set cta1 = {"href": "/provider/Queue", "text": "Open my queue"} %}
-  {% set cta2 = {"href": "/providers/history/" ~ session.get("prov_id", ""), "text": "My history"} %}
+  {% set cta2 = {"href": "/providers/history/" ~ session.get("prov_id", "") ~ "?period=all", "text": "My history"} %}
 {% elif role == "manager" %}
   {% set cta1 = {"href": "/manager/queues", "text": "Open live queues"} %}
   {% set cta2 = {"href": "/manager/providers", "text": "Manage providers"} %}

@@ -4,6 +4,7 @@ from functools import wraps
 from cs50 import SQL
 import sqlite3
 import random
+import time
 from datetime import datetime, timedelta
 import requests
 import json
@@ -100,6 +101,16 @@ def clear_user_session():
     for key in keys_to_clear:
         session.pop(key, None)
         
+FROZEN_START = datetime(2026, 10, 23, 22, 20, 0)
+_BOOT = time.monotonic()
+
+def cairo_now():
+  # Same convention as the seed: UTC+3
+  elapsed = time.monotonic() - _BOOT
+  return (FROZEN_START + timedelta(seconds=elapsed)).replace(microsecond=0)
+  return datetime.strptime("2026-10-23 22:20:00", "%Y-%m-%d %H:%M:%S")
+  return datetime.now() + timedelta(hours=3)
+
 def apology(message, code=400):
   """Render message as an apology to user."""
 
@@ -305,7 +316,7 @@ def _pct(cur, prev):
 
 
 def _period_ranges(period):
-  now = datetime.now()
+  now = cairo_now()
   today = now.replace(hour=0, minute=0, second=0, microsecond=0)
   tomorrow = today + timedelta(days=1)
 
@@ -395,8 +406,8 @@ def _series(provider_id, start, end, gran):
 
   labels, completed, minutes, ratings = [], [], [], []
   if gran == "day":
-    limit = min(end, datetime.now().replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)) \
-      if end > datetime.now() else end
+    limit = min(end, cairo_now().replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)) \
+      if end > cairo_now() else end
     d = start
     while d < limit:
       r = by_key.get(d.strftime("%Y-%m-%d"))
@@ -417,7 +428,7 @@ def _series(provider_id, start, end, gran):
 
 
 def _last_12_months(provider_id):
-  today = datetime.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+  today = cairo_now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
   months = []
   y, m = today.year, today.month
   for _ in range(12):

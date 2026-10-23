@@ -5,7 +5,7 @@ from flask_session import Session
 import requests
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from functions import init_db, login_required, guest_ban, send_otp, calculate_change, limitFloat, estimation, clear_user_session, getCities, toMinutes, get_client_ip, period_bounds, _pct, _period_ranges, _summary, _series, _last_12_months 
+from functions import init_db, login_required, guest_ban, send_otp, calculate_change, limitFloat, estimation, clear_user_session, getCities, toMinutes, get_client_ip, period_bounds, _pct, _period_ranges, _summary, _series, _last_12_months, cairo_now
 from datetime import datetime, timedelta
 from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
 import random
@@ -30,7 +30,6 @@ Session(app)
 init_db()
 db = SQL("sqlite:///smartline.db")
 app.jinja_env.filters["near"] = limitFloat
-
 
 @app.after_request
 def after_request(response):
@@ -95,7 +94,7 @@ def register():
       check = db.execute("SELECT * FROM users WHERE email = ?", email.strip().lower())
       if check :
         if not check[0]["is_verified"] :
-          if ( datetime.now() - datetime.strptime(check[0]["created_at"], "%Y-%m-%d %H:%M:%S") ) > timedelta(minutes=10) :
+          if ( cairo_now() - datetime.strptime(check[0]["created_at"], "%Y-%m-%d %H:%M:%S") ) > timedelta(minutes=10) :
             db.execute("DELETE FROM users WHERE id = ?", check[0]["id"])
           else :
             flash("try again in a few minutes", category="no")
@@ -151,7 +150,7 @@ def verification():
     if not code or not code.isdigit():
       flash("enter code pls", category="no")
       return redirect("/verification")
-    code_expired = ( datetime.now() - datetime.strptime(session.get("otp_expiry", "2007-09-23 18:30:00"), "%Y-%m-%d %H:%M:%S")) > timedelta(minutes=10);
+    code_expired = ( cairo_now() - datetime.strptime(session.get("otp_expiry", "2007-09-23 18:30:00"), "%Y-%m-%d %H:%M:%S")) > timedelta(minutes=10);
     if int(code) == int(user["verification_code"]) and not code_expired:
       db.execute("UPDATE users SET is_verified = 1 WHERE id = ?", session["user_id"])
       session["login_state"] = 0
@@ -163,11 +162,11 @@ def verification():
   
   else :
     check = db.execute("SELECT * FROM users WHERE id = ?", session["user_id"])
-    if ( datetime.now() - datetime.strptime(session.get("otp_expiry", "2007-09-23 18:30:00"), "%Y-%m-%d %H:%M:%S")) > timedelta(minutes=10) :
+    if ( cairo_now() - datetime.strptime(session.get("otp_expiry", "2007-09-23 18:30:00"), "%Y-%m-%d %H:%M:%S")) > timedelta(minutes=10) :
       code = str(random.randint(100000, 999999))
       db.execute("UPDATE users SET verification_code = ? WHERE id = ?", code,session["user_id"])
       send_otp(check[0]["id"])
-      session["otp_expiry"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+      session["otp_expiry"] = cairo_now().strftime("%Y-%m-%d %H:%M:%S")
 
     return render_template("verification.html", email=check[0]["email"])
     # , code=check[0]["verification_code"]
@@ -362,7 +361,6 @@ def findQueue() :
 
   for company in companies :
     queues = db.execute("SELECT queues.* FROM queues JOIN providers ON providers.id = queues.provider_id JOIN managers ON managers.id = providers.manager_id WHERE queues.status = 'active' AND managers.id = ?", company["manager_id"])
-    # logs = db.execute("SELECT service_logs.* FROM service_logs JOIN queues ON queues.id = service_logs.queue_id JOIN providers ON providers.id = queues.provider_id WHERE providers.manager_id = ? AND stars IS NOT NULL", company["manager_id"])
     logs = db.execute("SELECT service_logs.* FROM service_logs JOIN queues ON queues.id = service_logs.queue_id WHERE queues.company_id = ? AND stars IS NOT NULL", company["comp_id"])
     open_counters = len(queues)
     if logs :
@@ -451,7 +449,7 @@ def QueuesOfCompany(comp_id) :
 
     # * check opened or closed
   if company['opening_time'] and company['closing_time'] :
-    now_time = toMinutes(datetime.now().time())
+    now_time = toMinutes(cairo_now().time())
     open_time = toMinutes(datetime.strptime(company['opening_time'], "%H:%M").time())
     close_time = toMinutes(datetime.strptime(company['closing_time'], "%H:%M").time())
     diff = close_time - open_time
@@ -515,7 +513,7 @@ def QueuesOfCompany(comp_id) :
 
     nowServingLog = db.execute("SELECT * FROM service_logs WHERE queue_id = ? AND end_time IS NULL ORDER BY start_time DESC LIMIT 1", queue["id"])
     if nowServingLog:
-      started = (datetime.now() - datetime.strptime(nowServingLog[0]["start_time"], "%Y-%m-%d %H:%M:%S")).total_seconds() / 60
+      started = (cairo_now() - datetime.strptime(nowServingLog[0]["start_time"], "%Y-%m-%d %H:%M:%S")).total_seconds() / 60
 
     if serving :
       if serving[0]["user_id"] :
@@ -551,9 +549,9 @@ def QueuesOfCompany(comp_id) :
       lowest_time_queue_id = queue['id']
 
     if db.execute("SELECT * FROM queue_entries WHERE status = 'waiting' AND queue_id = ?", queue["id"]) :
-      break_test = db.execute("SELECT * FROM service_logs WHERE queue_id = ? ORDER BY end_time DESC  LIMIT 1", queue["id"])
+      break_test = db.execute("SELECT * FROM service_logs WHERE queue_id = ? AND end_time IS NOT NULL ORDER BY end_time DESC  LIMIT 1", queue["id"])
       if break_test :
-        break_time = (datetime.now() - datetime.strptime(break_test[0]["end_time"] , "%Y-%m-%d %H:%M:%S")).total_seconds() / 60
+        break_time = (cairo_now() - datetime.strptime(break_test[0]["end_time"] , "%Y-%m-%d %H:%M:%S")).total_seconds() / 60
       else :
         break_time = 0
     else :
@@ -577,6 +575,21 @@ def QueuesOfCompany(comp_id) :
 @app.route("/customer/join/<queue_id>", methods=["GET", "POST"])
 @login_required
 def join(queue_id) :
+  queue = db.execute("SELECT q.id, q.company_id, c.manager_id FROM queues q JOIN companies c ON c.id = q.company_id WHERE q.id = ? AND q.status = 'active' ", queue_id)
+  if not queue:
+    flash("This queue is not available.", category="no")
+    return redirect("/customer/myQueue")
+  # 2. Prevent providers and managers from joining their own company's queues
+  if session.get("user_id"):
+    user_id = session["user_id"]
+
+    provider = db.execute("SELECT id FROM providers WHERE user_id = ? AND manager_id = ?", user_id, queue[0]["manager_id"])
+    manager = db.execute("SELECT id FROM managers WHERE user_id = ? AND id = ?", user_id, queue[0]["manager_id"])
+
+    if provider or manager:
+      flash("You cannot join a queue at your own company.", category="no")
+      return redirect("/customer/myQueue")
+      
   postion = db.execute("SELECT * FROM queue_entries WHERE queue_id = ? ORDER BY position DESC LIMIT 1", queue_id)
   if postion :
     next_postion = postion[0]["position"] + 1
@@ -645,7 +658,7 @@ def fastestQueue() :
     serving = db.execute("SELECT * FROM queue_entries WHERE status = 'serving' AND queue_id = ?", q["id"])
     nowServingLog = db.execute("SELECT * FROM service_logs WHERE queue_id = ? AND end_time IS NULL ORDER BY start_time DESC LIMIT 1", q["id"])
     if nowServingLog:
-      started = (datetime.now() - datetime.strptime(nowServingLog[0]["start_time"], "%Y-%m-%d %H:%M:%S")).total_seconds() / 60
+      started = (cairo_now() - datetime.strptime(nowServingLog[0]["start_time"], "%Y-%m-%d %H:%M:%S")).total_seconds() / 60
 
     if serving :
       if serving[0]["user_id"] :
@@ -672,7 +685,7 @@ def fastestQueue() :
       if db.execute("SELECT * FROM queue_entries WHERE status = 'waiting' AND queue_id = ?", q["id"]) :
         break_test = db.execute("SELECT * FROM service_logs WHERE queue_id = ? ORDER BY end_time DESC  LIMIT 1", q["id"])
         if break_test :
-          break_time = (datetime.now() - datetime.strptime(break_test[0]["end_time"] , "%Y-%m-%d %H:%M:%S")).total_seconds() / 60
+          break_time = (cairo_now() - datetime.strptime(break_test[0]["end_time"] , "%Y-%m-%d %H:%M:%S")).total_seconds() / 60
         else :
           break_time = 0
       else :
@@ -747,7 +760,7 @@ def myQueueCustomer() :
 
   serviceData = db.execute("SELECT * FROM service_logs WHERE queue_id = ? AND end_time IS NULL ORDER BY start_time DESC LIMIT 1", queue[0]["id"])
   if serviceData :
-    started = ( datetime.now() - datetime.strptime(serviceData[0]["start_time"], "%Y-%m-%d %H:%M:%S") ).total_seconds() / 60
+    started = ( cairo_now() - datetime.strptime(serviceData[0]["start_time"], "%Y-%m-%d %H:%M:%S") ).total_seconds() / 60
   if serving:
     if serving[0]["user_id"] :
       serv_est = db.execute("SELECT * FROM service_logs WHERE end_time IS NOT NULL AND user_id = ? ORDER BY end_time DESC LIMIT 5", serving[0]["user_id"])
@@ -869,7 +882,7 @@ def dataMyQueueCustomer() :
   
   serviceData = db.execute("SELECT * FROM service_logs WHERE queue_id = ? AND end_time IS NULL ORDER BY start_time DESC LIMIT 1", queue[0]["id"])
   if serviceData :
-    started = ( datetime.now() - datetime.strptime(serviceData[0]["start_time"], "%Y-%m-%d %H:%M:%S") ).total_seconds() / 60
+    started = ( cairo_now() - datetime.strptime(serviceData[0]["start_time"], "%Y-%m-%d %H:%M:%S") ).total_seconds() / 60
   if serving:
     if serving[0]["user_id"] :
       serv_est = db.execute("SELECT * FROM service_logs WHERE end_time IS NOT NULL AND user_id = ? ORDER BY end_time DESC LIMIT 5", serving[0]["user_id"])
@@ -942,7 +955,7 @@ def leaveQueue() :
     service_log = db.execute("SELECT * FROM service_logs WHERE queue_entry_id = ? AND end_time IS NULL", entre[0]["id"])
     if service_log :
       db.execute("UPDATE service_logs SET end_time = ? WHERE queue_entry_id = ? AND end_time IS NULL", 
-                 datetime.now().strftime("%Y-%m-%d %H:%M:%S"), entre[0]["id"])
+                 cairo_now().strftime("%Y-%m-%d %H:%M:%S"), entre[0]["id"])
     db.execute("UPDATE queue_entries SET status = 'done' WHERE id = ?", entre[0]['id'])
   elif session.get("login_state") == 2 :
     ip = get_client_ip()
@@ -953,7 +966,7 @@ def leaveQueue() :
     service_log = db.execute("SELECT * FROM service_logs WHERE queue_entry_id = ? AND end_time IS NULL", entre[0]["id"])
     if service_log :
       db.execute("UPDATE service_logs SET end_time = ? WHERE queue_entry_id = ? AND end_time IS NULL",
-                  datetime.now().strftime("%Y-%m-%d %H:%M:%S"), entre[0]["id"])
+                  cairo_now().strftime("%Y-%m-%d %H:%M:%S"), entre[0]["id"])
     db.execute("UPDATE queue_entries SET status = 'done' WHERE id = ?", entre[0]['id'])
   else :
     flash("Your session has expired. Please log in again.", category="no")
@@ -1042,7 +1055,6 @@ def customerHistory(user_id) :
         search_term = f"%{search_query}%"
         params.extend([search_term, search_term, search_term])
 
-  print(str(period) + 'used in this = ' + str(date_filter))
   query = f"""
     SELECT 
       sl.id AS log_id,
@@ -1090,14 +1102,6 @@ def customerHistory(user_id) :
     "items": raw_logs
   }
 
-  print("URL user_id:", user_id)
-  print("Session user_id:", session.get("user_id"))
-  print("Period:", period)
-  print("Date filter:", repr(date_filter))
-  print("Search query:", repr(search_query))
-  print("SQL params:", params)
-  print("SQL query:", query)
-  print("Results count:", len(raw_logs))
   return render_template("customerHistory.html", data=data)
 
 
@@ -1212,7 +1216,7 @@ def providerDashboard():
   enough_data = total_completed >= MIN_SERVICES_FOR_INSIGHTS
 
   if enough_data:
-    current_month = datetime.now().strftime("%b %Y")
+    current_month = cairo_now().strftime("%b %Y")
 
     timed = [
         m for m in monthly
@@ -1341,16 +1345,16 @@ def providerQueue() :
   if serving:
     serviceData = db.execute("SELECT * FROM service_logs WHERE queue_entry_id = ? AND end_time IS NULL", serving[0]["id"])
     if serviceData :
-      started = ( datetime.now() - datetime.strptime(serviceData[0]["start_time"], "%Y-%m-%d %H:%M:%S") ).total_seconds() / 60
+      started = ( cairo_now() - datetime.strptime(serviceData[0]["start_time"], "%Y-%m-%d %H:%M:%S") ).total_seconds() / 60
     else :
       # insert data
       ip = serving[0]['ip_address']
       if serving[0]["user_id"] :
         db.execute("INSERT INTO service_logs (queue_id, user_id, queue_entry_id, user_name, company_name, start_time, ip_address) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                    nowQueue[0]["id"], serving[0]["user_id"], serving[0]["id"], serving[0]["user_name"],comp[0]["name"] , datetime.now().strftime("%Y-%m-%d %H:%M:%S"), ip)
+                    nowQueue[0]["id"], serving[0]["user_id"], serving[0]["id"], serving[0]["user_name"],comp[0]["name"] , cairo_now().strftime("%Y-%m-%d %H:%M:%S"), ip)
       else :
         db.execute("INSERT INTO service_logs (queue_id, queue_entry_id, user_name, company_name, start_time, ip_address) VALUES (?, ?, ?, ?, ?, ?)",
-                    nowQueue[0]["id"], serving[0]["id"], serving[0]["user_name"],comp[0]["name"] ,datetime.now().strftime("%Y-%m-%d %H:%M:%S"), ip)
+                    nowQueue[0]["id"], serving[0]["id"], serving[0]["user_name"],comp[0]["name"] ,cairo_now().strftime("%Y-%m-%d %H:%M:%S"), ip)
         
 
       started = 0
@@ -1359,7 +1363,7 @@ def providerQueue() :
     joined = dt_object.strftime("%I:%M %p").lstrip('0')
   else :
     started = 0
-    joined = datetime.now().strftime("%-I:%M %p")
+    joined = cairo_now().strftime("%-I:%M %p")
 
     # * In waiting and serving estimated time
   prov_est = db.execute("SELECT * FROM service_logs WHERE end_time IS NOT NULL AND queue_id IN (SELECT id FROM queues WHERE provider_id = ? AND company_id = ?) ORDER BY start_time DESC LIMIT 100", prov[0]["id"], comp[0]['id'])
@@ -1381,7 +1385,7 @@ def providerQueue() :
     name = customer.get("user_name") or "Guest"
     user_type = "Registered" if customer["user_id"] else "Guest"
     dt_object = datetime.strptime(customer["joined_at"], "%Y-%m-%d %H:%M:%S")
-    joined_ago = (datetime.now() - dt_object).total_seconds() / 60
+    joined_ago = (cairo_now() - dt_object).total_seconds() / 60
     joined_time = dt_object.strftime("%I:%M %p").lstrip('0')
 
     # * to get the estimated time by get the average of services in the past for provider and customer
@@ -1467,7 +1471,7 @@ def dataProviderQueue() :
   waiting = []
   serving_est = 0
   started = 0
-  joined = datetime.now().strftime("%-I:%M %p")
+  joined = cairo_now().strftime("%-I:%M %p")
   if serving :
     if serving[0]["user_id"] :
         customer_est = db.execute("SELECT * FROM service_logs WHERE end_time IS NOT NULL AND user_id = ? ORDER BY start_time DESC LIMIT 5", serving[0]["user_id"])
@@ -1475,7 +1479,7 @@ def dataProviderQueue() :
 
     serviceData = db.execute("SELECT * FROM service_logs WHERE queue_entry_id = ? AND end_time IS NULL", serving[0]["id"])
     if serviceData :
-      started = ( datetime.now() - datetime.strptime(serviceData[0]["start_time"], "%Y-%m-%d %H:%M:%S") ).total_seconds() / 60
+      started = ( cairo_now() - datetime.strptime(serviceData[0]["start_time"], "%Y-%m-%d %H:%M:%S") ).total_seconds() / 60
 
     dt_object = datetime.strptime(serving[0]["joined_at"], "%Y-%m-%d %H:%M:%S")
     joined = dt_object.strftime("%I:%M %p").lstrip('0')
@@ -1494,7 +1498,7 @@ def dataProviderQueue() :
     name = customer.get("user_name") or "Guest"
     user_type = "Registered" if customer["user_id"] else "Guest"
     dt_object = datetime.strptime(customer["joined_at"], "%Y-%m-%d %H:%M:%S")
-    joined_ago = (datetime.now() - dt_object).total_seconds() / 60
+    joined_ago = (cairo_now() - dt_object).total_seconds() / 60
     joined_time = dt_object.strftime("%I:%M %p").lstrip('0')
 
     # * to get the estimated time by get the average of services in the past for provider and customer
@@ -1606,10 +1610,10 @@ def call_next():
       ip = db.execute("SELECT * FROM queue_entries WHERE id = ?", customer["id"])
       if customer["user_id"]:
         db.execute("INSERT INTO service_logs (queue_id, user_id, queue_entry_id, user_name, company_name, start_time, ip_address) VALUES (?, ?, ?, ?, ?, ?, ?)",
-              nowQueue[0]["id"], customer["user_id"], customer["id"], customer["user_name"],comp[0]["name"] , datetime.now().strftime("%Y-%m-%d %H:%M:%S"), ip[0]['ip_address'])
+              nowQueue[0]["id"], customer["user_id"], customer["id"], customer["user_name"],comp[0]["name"] , cairo_now().strftime("%Y-%m-%d %H:%M:%S"), ip[0]['ip_address'])
       else:
         db.execute("INSERT INTO service_logs (queue_id, queue_entry_id, user_name, company_name, start_time, ip_address) VALUES (?, ?, ?, ?, ?, ?)",
-              nowQueue[0]["id"], customer["id"], customer["user_name"],comp[0]["name"] ,datetime.now().strftime("%Y-%m-%d %H:%M:%S"), ip[0]['ip_address'])
+              nowQueue[0]["id"], customer["id"], customer["user_name"],comp[0]["name"] ,cairo_now().strftime("%Y-%m-%d %H:%M:%S"), ip[0]['ip_address'])
         
   else:
     flash("No customers waiting", category="no")
@@ -1640,28 +1644,24 @@ def skip_service():
     serving = db.execute("SELECT * FROM queue_entries WHERE status = 'serving' AND queue_id = ?", nowQueue[0]["id"])
     
     if serving:
-        # نجيب بيانات الخدمة الحالية عشان نعرف هو اتنادى إمتى
         service_record = db.execute("SELECT * FROM service_logs WHERE queue_entry_id = ? AND end_time IS NULL", serving[0]["id"])
         
         if service_record:
             start_time = datetime.strptime(service_record[0]["start_time"], "%Y-%m-%d %H:%M:%S")
-            time_passed = (datetime.now() - start_time).total_seconds() / 60
+            time_passed = (cairo_now() - start_time).total_seconds() / 60
             
-            # شرط الدقيقتين
             if time_passed < 2:
                 flash(f"You must wait 2 minutes. Only {int(time_passed)} minute(s) passed.", category="no")
                 return redirect("/provider/Queue")
             
-            # لو عدى دقيقتين، نمسح السجل من logs عشان وقته ميتحسبش
             db.execute("DELETE FROM service_logs WHERE id = ?", service_record[0]["id"])
             
-        # ننهي التذكرة بتاعته
         db.execute("UPDATE queue_entries SET status = 'done' WHERE id = ?", serving[0]["id"])
         flash("Customer skipped.", category="yes")
         
         remaining = db.execute("SELECT * FROM queue_entries WHERE queue_id = ? AND status IN ('waiting', 'serving')", nowQueue[0]["id"])
         if nowQueue[0]["status"] == "closed" and len(remaining) == 0 :
-          now_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+          now_time = cairo_now().strftime("%Y-%m-%d %H:%M:%S")
           db.execute("UPDATE queues SET closed_at = ? WHERE id = ?", now_time, nowQueue[0]["id"])
           flash("All customers served! Shift has ended completely.", category="yes")
         
@@ -1689,12 +1689,12 @@ def end_service():
   serving = db.execute("SELECT * FROM queue_entries WHERE status = 'serving' AND queue_id = ?", nowQueue[0]["id"])
   if serving:
     db.execute("UPDATE service_logs SET end_time = ? WHERE queue_entry_id = ? AND end_time IS NULL",
-              datetime.now().strftime("%Y-%m-%d %H:%M:%S"), serving[0]["id"])
+              cairo_now().strftime("%Y-%m-%d %H:%M:%S"), serving[0]["id"])
     db.execute("UPDATE queue_entries SET status = 'done' WHERE id = ?", serving[0]["id"])
   
   remaining = db.execute("SELECT * FROM queue_entries WHERE queue_id = ? AND status IN ('waiting', 'serving')", nowQueue[0]["id"])
   if nowQueue[0]["status"] == "closed" and len(remaining) == 0 :
-    now_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    now_time = cairo_now().strftime("%Y-%m-%d %H:%M:%S")
     db.execute("UPDATE queues SET closed_at = ? WHERE id = ?", now_time, nowQueue[0]["id"])
     flash("All customers served! Shift has ended.", category="yes")
 
@@ -1734,7 +1734,7 @@ def end_shift(prov_id):
     queue_id = nowQueue[0]["id"]
     remaining = db.execute("SELECT * FROM queue_entries WHERE queue_id = ? AND status IN ('waiting', 'serving')", nowQueue[0]["id"])
     if len(remaining) == 0 :
-      now_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+      now_time = cairo_now().strftime("%Y-%m-%d %H:%M:%S")
       db.execute("UPDATE queues SET status = 'closed', closed_at = ? WHERE id = ?", now_time, nowQueue[0]["id"])
       flash("Shift has ended.", category="yes")
     else :
@@ -1805,7 +1805,7 @@ def provHistory(prov_id) :
         serviceData = db.execute("SELECT * FROM service_logs WHERE queue_entry_id = ? AND end_time IS NULL", serving[0]["id"])
         started = 0
         if serviceData:
-          started = (datetime.now() - datetime.strptime(serviceData[0]["start_time"], "%Y-%m-%d %H:%M:%S")).total_seconds() / 60
+          started = (cairo_now() - datetime.strptime(serviceData[0]["start_time"], "%Y-%m-%d %H:%M:%S")).total_seconds() / 60
         serving_info = {
           "name": serving[0]["user_name"],
           "type": "Registered" if serving[0]["user_id"] else "Guest",
@@ -1822,7 +1822,7 @@ def provHistory(prov_id) :
       running_total = 0
       for w in waiting:
         user_type = "Registered" if w["user_id"] else "Guest"
-        joined_ago = (datetime.now() - datetime.strptime(w["joined_at"], "%Y-%m-%d %H:%M:%S")).total_seconds() / 60
+        joined_ago = (cairo_now() - datetime.strptime(w["joined_at"], "%Y-%m-%d %H:%M:%S")).total_seconds() / 60
         customer_est = []
         if w["user_id"]:
           customer_est = db.execute(
@@ -2080,7 +2080,7 @@ def managerDashboard():
   providers_on_shift = 0
 
   provider_workload = []
-  operational_alerts = []
+  ungrouped_operational_alerts = []
 
   for provider in providers:
 
@@ -2137,7 +2137,7 @@ def managerDashboard():
             )
 
             waiting_minutes = (
-              datetime.now() - joined_at
+              cairo_now() - joined_at
             ).total_seconds() / 60
 
             average_minutes = None
@@ -2223,15 +2223,16 @@ def managerDashboard():
 
               expected_wait = max(1, customers_ahead) * average_minutes
 
-              if waiting_minutes > expected_wait * 2:
-                operational_alerts.append({
+              if waiting_minutes > expected_wait * 1.25:
+                ungrouped_operational_alerts.append({
                   "type": "waiting",
                   "severity": (
                     "high"
-                    if waiting_minutes >= expected_wait + average_minutes
+                    if waiting_minutes >= expected_wait * 1.25 + average_minutes * 1.5
                     else "medium"
                   ),
                   "provider_name": provider["provider_name"],
+                  "provider_id": provider["provider_id"],
                   "customer_name": entry["user_name"],
                   "minutes": int(waiting_minutes),
                   "expected_minutes": round(expected_wait),
@@ -2264,7 +2265,7 @@ def managerDashboard():
               )
 
               service_minutes = (
-                datetime.now() - start_time
+                cairo_now() - start_time
               ).total_seconds() / 60
 
               average_minutes = None
@@ -2338,14 +2339,15 @@ def managerDashboard():
               # Alert only when historical data is available.
               if average_minutes is not None and average_minutes > 0:
                 if service_minutes > average_minutes:
-                  operational_alerts.append({
+                  ungrouped_operational_alerts.append({
                     "type": "service",
                     "severity": (
                       "high"
-                      if service_minutes >= average_minutes * 2
+                      if service_minutes >= average_minutes * 1.5
                       else "medium"
                     ),
                     "provider_name": provider["provider_name"],
+                    "provider_id": provider["provider_id"],
                     "customer_name": entry["user_name"],
                     "minutes": int(service_minutes),
                     "expected_minutes": round(average_minutes),
@@ -2414,6 +2416,30 @@ def managerDashboard():
     ORDER BY service_logs.end_time DESC
     LIMIT 5
   """, company_id)
+
+  operational_alerts = []
+
+  for alert in ungrouped_operational_alerts:
+    found = False
+    for group in operational_alerts:
+      if group["provider_id"] == alert["provider_id"]:
+        found = True
+        break
+    if not found:
+      operational_alerts.append({
+        "type": "service",
+        "severity": (
+          "high"
+          if alert["minutes"] >= alert["expected_minutes"] * 1.25
+          else "medium"
+        ),
+        "provider_name": alert["provider_name"],
+        "provider_id": alert["provider_id"],
+        "customer_name": alert["customer_name"],
+        "minutes": alert["minutes"],
+        "expected_minutes": alert["expected_minutes"],
+        "message": alert["message"]
+      })
 
   # * Sort alerts by severity and waiting/service duration
   operational_alerts.sort(
@@ -2705,7 +2731,7 @@ def managerProviders() :
 
     db.execute("""
       UPDATE queues 
-      SET status = 'closed', closed_at = CURRENT_TIMESTAMP 
+      SET status = 'closed', closed_at = datetime('now', '+3 hours') 
       WHERE provider_id = ? AND status = 'active'
       """, provider["id"])
 
@@ -2911,7 +2937,7 @@ def updateInfoManager() :
               manager[0]["id"], managerdetails['name'], managerdetails['cat'], managerdetails['country'], managerdetails['city'],
               managerdetails['opening'], managerdetails['closing'], managerdetails['address'], managerdetails['phone'], managerdetails['description']
           )
-  db.execute("UPDATE managers SET company_name = ? WHERE id = ?", managerdetails['name'], manager[0]['id'])
+  # db.execute("UPDATE managers SET company_name = ? WHERE id = ?", managerdetails['name'], manager[0]['id'])
   session["country"] = managerdetails['country']
   session["city"] = managerdetails['city']
   db.execute("UPDATE users SET country = ?, city = ? WHERE id = ?", managerdetails['country'], managerdetails['city'],session["user_id"])
@@ -3005,7 +3031,7 @@ def managerQueues() :
 
     if serving :
       serv_name = serving[0]['user_name']
-      serv_ago = (datetime.now() - datetime.strptime(serving[0]['joined_at'], "%Y-%m-%d %H:%M:%S")).total_seconds() / 60
+      serv_ago = (cairo_now() - datetime.strptime(serving[0]['joined_at'], "%Y-%m-%d %H:%M:%S")).total_seconds() / 60
     else :
       serv_name = ''
       serv_ago = 0
@@ -3178,7 +3204,7 @@ def updateInfoProfile() :
       check = db.execute("SELECT * FROM users WHERE email = ?", new_email)
       if check :
         if not check[0]["is_verified"] :
-          if ( datetime.now() - datetime.strptime(check[0]["created_at"], "%Y-%m-%d %H:%M:%S") ) > timedelta(minutes=10) :
+          if ( cairo_now() - datetime.strptime(check[0]["created_at"], "%Y-%m-%d %H:%M:%S") ) > timedelta(minutes=10) :
             db.execute("DELETE FROM users WHERE id = ?", check[0]["id"])
           else :
             flash("try again in a few minutes", category="no")
@@ -3326,7 +3352,8 @@ def becomeManager() :
     return redirect("/profile")
     
 
-  db.execute("INSERT INTO managers (user_id, company_name) VALUES (?, ?)", session["user_id"], comp)
+  # db.execute("INSERT INTO managers (user_id, company_name) VALUES (?, ?)", session["user_id"], comp)
+  db.execute("INSERT INTO managers (user_id) VALUES (?)", session["user_id"])
   manager = db.execute("SELECT * FROM managers WHERE user_id = ?", session["user_id"])[0]
   db.execute("INSERT INTO companies (manager_id, name, category, country, city) VALUES (?, ?, ?, ?, ?)", manager["id"], comp, cat, country, city)
   session["role"] = "manager"

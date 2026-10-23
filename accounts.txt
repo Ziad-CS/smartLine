@@ -1,0 +1,26 @@
+========== Managers ==========
+EG == 127 ==
+127 | Mahmoud Ghoneim | mahmoud.ghoneim@yahoo.com | luxor | Ghoneim_M2003
+
+SA == 537 ==
+537 | Noura Al-Harbi | noura.alharbi1118@gmail.com | saudi arabia | riyadh | Noura#Hrb2003
+
+========== Providers ==========
+EG == 729 ==
+729 | Ahmed Al-Muhairi | ahmed.almuhairi@outlook.com | united arab emirates | khawr fakkān | Ahmed_Mh1996
+
+SA == 534 ==
+534 | Ahmed Al-Fahad | ahmed.alfahad75@outlook.com | saudi arabia | riyadh | Ahmed_Fhd1994
+
+========== customer ==========
+EG == 63 ==
+63 | Ahmed Zidan | ahmed.zidan@yahoo.com | dakahlia | Zidan_2000x
+
+plastin == 840 ==
+840 | Issa Rimawi | issa.rimawi@gmail.com | palestinian territory occupied | gaza | Issa#Rmw1989 | manager and prov
+
+SA == 454 ==
+454 | Nawwaf Al-Ruwais | nawwaf.alruwais@yahoo.com | saudi arabia | jeddah | Nawwaf_Rw2002 | prov only
+
+UAE == 635 ==
+635 | Salama Al-Ameri | salama.alameri587@gmail.com | united arab emirates | abu dhabi | Salama#Ame1987

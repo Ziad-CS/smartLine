@@ -79,6 +79,7 @@
                 required
                 minlength="3"
                 maxlength="50"
+                value="{{ managerdetails.get('name', '') }}"
               >
             </div>
 
@@ -88,12 +89,12 @@
               </label>
 
               <select class="form-select bg-light border-0" name="category" id="cCategory">
-                <option value="clinics" selected>Clinics & Healthcare</option>
-                <option value="banks">Banks & Finance</option>
-                <option value="government_offices">Government Offices</option>
-                <option value="telecom">Telecom & Customer Service</option>
-                <option value="edu">Education</option>
-                <option value="other">Other</option>
+                <option value="clinics" {% if managerdetails and managerdetails.cat == 'clinics' %}selected{% endif %}>Clinics & Healthcare</option>
+                <option value="banks" {% if managerdetails and managerdetails.cat == 'banks' %}selected{% endif %}>Banks & Finance</option>
+                <option value="government_offices" {% if managerdetails and managerdetails.cat == 'government_offices' %}selected{% endif %}>Government Offices</option>
+                <option value="telecom" {% if managerdetails and managerdetails.cat == 'telecom' %}selected{% endif %}>Telecom & Customer Service</option>
+                <option value="edu" {% if managerdetails and managerdetails.cat == 'edu' %}selected{% endif %}>Education</option>
+                <option value="other" {% if managerdetails and managerdetails.cat == 'other' %}selected{% endif %}>Other</option>
               </select>
             </div>
 

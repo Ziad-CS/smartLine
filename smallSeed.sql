@@ -566,7 +566,7 @@
   UPDATE users 
   SET created_at = datetime(
       '2000-01-01 00:00:00', 
-      '+' || (ABS(RANDOM()) % (strftime('%s', 'now') - strftime('%s', '2000-01-01 00:00:00'))) || ' seconds', 
+      '+' || (ABS(RANDOM()) % (strftime('%s', "2026-10-24 11:20:00") - strftime('%s', '2000-01-01 00:00:00'))) || ' seconds', 
       '+3 hours'
   );
 
@@ -1098,7 +1098,7 @@
     CREATE TEMP TABLE _m AS
     SELECT m.id AS manager_id,
           CAST(strftime('%s', u.created_at) AS INTEGER) AS u_epoch,
-          CAST(strftime('%s', 'now', '+3 hours') AS INTEGER) AS now_epoch,
+          CAST(strftime('%s', "2026-10-24 11:20:00", '+3 hours') AS INTEGER) AS now_epoch,
           CASE WHEN EXISTS (SELECT 1 FROM providers p WHERE p.user_id = m.user_id AND p.id % 20 < 17)
                 THEN 0.25 ELSE 0.0 END AS lo,
           ABS(RANDOM() % 1000000) / 1000000.0 AS r
@@ -1116,7 +1116,7 @@
     SELECT p.id AS provider_id,
           CAST(strftime('%s', u.created_at) AS INTEGER) AS u_epoch,
           CAST(strftime('%s', m.created_at) AS INTEGER) AS m_epoch,
-          CAST(strftime('%s', 'now', '+3 hours') AS INTEGER) AS now_epoch,
+          CAST(strftime('%s', "2026-10-24 11:20:00", '+3 hours') AS INTEGER) AS now_epoch,
           (p.id % 20 < 17) AS first_flag,
           ABS(RANDOM() % 1000000) / 1000000.0 AS r
     FROM providers p
@@ -1554,10 +1554,10 @@
 
   -- 0) Helpers
   CREATE TEMP TABLE _now AS
-  SELECT datetime('now','+3 hours') AS ts,
-        date('now','+3 hours')     AS today,
-        CAST(strftime('%H','now','+3 hours') AS INT)*60
-      + CAST(strftime('%M','now','+3 hours') AS INT)  AS nowm;
+  SELECT "2026-10-24 11:20:00" AS ts,
+        date("2026-10-24 11:20:00",'+3 hours')     AS today,
+        CAST(strftime('%H',"2026-10-24 11:20:00",'+3 hours') AS INT)*60
+      + CAST(strftime('%M',"2026-10-24 11:20:00",'+3 hours') AS INT)  AS nowm;
 
   CREATE TEMP TABLE _nums AS
   WITH RECURSIVE r(k) AS (SELECT 1 UNION ALL SELECT k+1 FROM r WHERE k < 1000)
@@ -1688,7 +1688,7 @@
 
   -- must be 0: no closed queue in the future
   SELECT COUNT(*) AS future_closed
-  FROM queues WHERE status = 'closed' AND closed_at > datetime('now','+3 hours');
+  FROM queues WHERE status = 'closed' AND closed_at > "2026-10-24 11:20:00";
 
 -- ==================== Generate Realistic Queue Entries ====================
   BEGIN;
@@ -1726,7 +1726,7 @@
   -- 2) Per-queue config: daily variation on service time, queue length in seconds
   CREATE TEMP TABLE _q AS
   SELECT q.id AS qid, q.provider_id, q.status, q.created_at AS qstart,
-    COALESCE(q.closed_at, datetime('now', '+3 hours')) AS qend,
+    COALESCE(q.closed_at, "2026-10-24 11:20:00") AS qend,
     s.svc_sec * (85 + ABS(RANDOM()) % 31) / 100.0 AS svc_q,
     CASE WHEN q.provider_id IN (273, 28) THEN 1 ELSE 0 END AS heavy_p
   FROM queues q
@@ -1861,7 +1861,7 @@
 
   -- Must be 0: no entry joined in the future
   SELECT COUNT(*) AS future_entry
-  FROM queue_entries WHERE joined_at > datetime('now', '+3 hours');
+  FROM queue_entries WHERE joined_at > "2026-10-24 11:20:00";
 
   -- Must be 0: no closed queue contains waiting or serving entries
   SELECT COUNT(*) AS open_in_closed
@@ -1896,8 +1896,8 @@
   SELECT e.id AS eid, e.queue_id, e.position AS pos, e.status, e.user_id, e.user_name, e.ip_address,
     julianday(e.joined_at) AS jd,
     q.company_id,
-    julianday(COALESCE(q.closed_at, datetime('now','+3 hours'))) AS qend_jd,
-    (julianday(COALESCE(q.closed_at, datetime('now','+3 hours'))) - julianday(q.created_at)) * 86400.0 / c.n AS avg_sec
+    julianday(COALESCE(q.closed_at, "2026-10-24 11:20:00")) AS qend_jd,
+    (julianday(COALESCE(q.closed_at, "2026-10-24 11:20:00")) - julianday(q.created_at)) * 86400.0 / c.n AS avg_sec
   FROM queue_entries e
   JOIN queues q ON q.id = e.queue_id
   JOIN (SELECT queue_id, COUNT(*) AS n FROM queue_entries GROUP BY queue_id) c ON c.queue_id = e.queue_id
@@ -2079,7 +2079,7 @@
   --   Managers : 127 (company 19, Luxor) and 537 (company 38, Riyadh)
   --   Providers: all providers of those managers (existing + new)
   --   Customers: 63, 840, 454, 635
-  --   "now" follows the seed convention: datetime('now', '+3 hours')
+  --   "now" follows the seed convention: "2026-10-24 11:20:00"
   -- Run after the managers / companies / providers / queues seed files.
   -- =====================================================================
   BEGIN;
@@ -2121,17 +2121,17 @@
 
   -- 4) Insert the new providers (dates fixed in step 5)
   INSERT INTO providers (user_id, manager_id, invite_code, created_at)
-  SELECT uid, manager_id, UPPER(HEX(RANDOMBLOB(4))), datetime('now', '+3 hours', '-2555 days')
+  SELECT uid, manager_id, UPPER(HEX(RANDOMBLOB(4))), datetime("2026-10-24 11:20:00", '+3 hours', '-2555 days')
   FROM _newp;
 
   -- 5) Dates: make everything older and keep the order
   --    user < manager < provider < queue
   UPDATE providers
-  SET created_at = datetime('now', '+3 hours', '-' || (365 + ABS(RANDOM()) % 731) || ' days')
+  SET created_at = datetime("2026-10-24 11:20:00", '+3 hours', '-' || (365 + ABS(RANDOM()) % 731) || ' days')
   WHERE manager_id IN (SELECT manager_id FROM _scope);
 
   UPDATE managers
-  SET created_at = datetime('now', '+3 hours', '-' || (2920 + ABS(RANDOM()) % 11) || ' days')
+  SET created_at = datetime("2026-10-24 11:20:00", '+3 hours', '-' || (2920 + ABS(RANDOM()) % 11) || ' days')
   WHERE id IN (SELECT manager_id FROM _scope);
 
   UPDATE companies
@@ -2139,7 +2139,7 @@
   WHERE manager_id IN (SELECT manager_id FROM _scope);
 
   UPDATE users
-  SET created_at = datetime('now', '+3 hours', '-' || (2950 + ABS(RANDOM()) % 60) || ' days')
+  SET created_at = datetime("2026-10-24 11:20:00", '+3 hours', '-' || (2950 + ABS(RANDOM()) % 60) || ' days')
   WHERE id IN (63, 127, 171, 1)
     OR id IN (SELECT user_id FROM providers WHERE manager_id IN (SELECT manager_id FROM _scope))
     OR id IN (SELECT user_id FROM managers WHERE id IN (SELECT manager_id FROM _scope));
@@ -2168,7 +2168,7 @@
   --    total : seconds from provider start to 2 days ago
   CREATE TEMP TABLE _prov AS
   SELECT p.id AS pid, p.manager_id, s.company_id, p.created_at AS pcreated, s.share_pct,
-        CAST(julianday(date('now', '+3 hours', '-1 days')) - julianday(date(p.created_at)) AS INT) AS span_days,
+        CAST(julianday(date("2026-10-24 11:20:00", '+3 hours', '-1 days')) - julianday(date(p.created_at)) AS INT) AS span_days,
         0 AS working
   FROM providers p
   JOIN _scope s ON s.manager_id = p.manager_id;
@@ -2189,7 +2189,7 @@
    CREATE TEMP TABLE _qgen AS
   WITH RECURSIVE dd(d) AS (SELECT 0 UNION ALL SELECT d + 1 FROM dd WHERE d < 1100)
   SELECT p.pid, p.company_id,
-        datetime(date('now', '+3 hours', '-1 days', '-' || dd.d || ' days'),
+        datetime(date("2026-10-24 11:20:00", '+3 hours', '-1 days', '-' || dd.d || ' days'),
                   '+' || ((8 + p.pid % 4) * 60 + ABS(RANDOM()) % 60) || ' minutes') AS q_created,
         60 + ABS(RANDOM()) % 121 AS life_min
   FROM _prov p
@@ -2197,7 +2197,7 @@
   WHERE (ABS(RANDOM()) % 1000) / 1000.0 <
         MAX(0.05, 0.92 - 0.0012 * dd.d)
         * MIN(1.0, (p.span_days - dd.d) / 60.0)
-        * CASE strftime('%w', date('now', '+3 hours', '-1 days', '-' || dd.d || ' days'))
+        * CASE strftime('%w', date("2026-10-24 11:20:00", '+3 hours', '-1 days', '-' || dd.d || ' days'))
             WHEN '5' THEN 0.04
             WHEN '6' THEN 0.75
             ELSE 1.0 END
@@ -2218,7 +2218,7 @@
         (SELECT s.id FROM services s
           WHERE s.company_id = p.company_id AND s.is_active = 1
           ORDER BY RANDOM() LIMIT 1),
-        datetime('now', '+3 hours', '-' || (60 + ABS(RANDOM()) % 180) || ' minutes'),
+        datetime("2026-10-24 11:20:00", '+3 hours', '-' || (60 + ABS(RANDOM()) % 180) || ' minutes'),
         NULL
   FROM _prov p
   WHERE p.working = 1;
@@ -2250,7 +2250,7 @@
   CREATE TEMP TABLE _qe AS
   WITH RECURSIVE k(pos) AS (SELECT 1 UNION ALL SELECT pos + 1 FROM k WHERE pos < 40)
   SELECT l.qid, l.pid, l.cid, l.status, l.kcur, l.gap_sec,
-        COALESCE(l.qe_at, datetime('now', '+3 hours')) AS end_cap,
+        COALESCE(l.qe_at, "2026-10-24 11:20:00") AS end_cap,
         k.pos,
         datetime(l.qc, '+' || CAST((k.pos - 1) * l.gap_sec AS INT) || ' seconds') AS joined_at,
         1 + ABS(RANDOM()) % 1653 AS uid,            -- users 1..1653 are contiguous
@@ -2372,7 +2372,7 @@
   FROM (
     SELECT qe.id, qe.queue_id, qe.user_id, qe.user_name, qe.joined_at, qe.ip_address,
           q.company_id,
-          COALESCE(q.closed_at, datetime('now', '+3 hours')) AS cap,
+          COALESCE(q.closed_at, "2026-10-24 11:20:00") AS cap,
           4 + ABS(RANDOM()) % 17 AS dur,
           ABS(RANDOM()) % 100 AS r,
           ABS(RANDOM()) % 100 AS r2
@@ -2413,7 +2413,7 @@
   WHERE l.start_time < e.joined_at;
 
   SELECT COUNT(*) AS future_entries
-  FROM queue_entries WHERE joined_at > datetime('now', '+3 hours');
+  FROM queue_entries WHERE joined_at > "2026-10-24 11:20:00";
 
   SELECT COUNT(*) AS multi_serving
   FROM (SELECT queue_id FROM queue_entries WHERE status = 'serving'

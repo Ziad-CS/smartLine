@@ -4791,3 +4791,4 @@
   DROP TABLE _closed;
 
   COMMIT;
+

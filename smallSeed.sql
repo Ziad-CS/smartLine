@@ -885,211 +885,163 @@
 
 -- ==================== SmartLine Seed: Providers (1-156) ====================
   INSERT INTO providers (user_id, manager_id, invite_code) VALUES
-  (137, 411, 'C39ZU63V'),,
-  (160, 111, 'XKZH92GJ'),
-  (7, 109, '3BAD9VT7'),
-  (76, 257, 'KNYFJPUY'),
-  (235, 58, 'PD3ZZJZG'),
-  (155, 384, '7DSPJV2Y'),
-  (154, 372, 'JVX3G3F9'),
-  (74, 12, 'XZ72ZDUY'),
-  (152, 427, 'UV66ZGAM'),
-  (119, 438, 'AAC8YWKE'),
-  (114, 107, 'A8MRG46G'),
-  (236, 35, 'ZT2FU5GU'),
-  (158, 132, 'L3GJK8LX'),
-  (197, 16, '7EG4SU5T'),
-  (196, 434, 'T65FWLHX'),
-  (243, 370, '235C7NVW'),
-  (72, 390, 'HHJQTRV9'),
-  (176, 285, 'WS649KB6'),
-  (80, 377, 'Z4EQYUWU'),
-  (60, 352, 'VFV63RPG'),
-  (226, 412, 'JADLUAP4'),
-  (96, 277, 'XZG8VFQS'),
-  (186, 88, '2H38NE2Q'),
-  (91, 277, 'N3VR49KE'),
-  (48, 161, 'GEJ2RSBX'),
-  (118, 349, 'Y326LPK3'),
-  (190, 253, 'PCPM8HTG'),
-  (189, 404, 'EBZEW9CR'),
-  (206, 315, 'LW44S65U'),
-  (36, 182, 'YVTWG8L8'),
-  (100, 2, 'D4XS8GCV'),
-  (79, 195, 'C3VATV99'),
-  (2, 72, 'MWPQQ5ZJ'),
-  (230, 387, '9AVEFY2G'),
-  (140, 177, '3AEYCNMF'),
-  (84, 43, 'M7RYHXC9'),
-  (218, 312, 'B6ANVVFA'),
-  (174, 259, 'TVYFMXRQ'),
-  (173, 218, 'F79NP53N'),
-  (143, NULL, 'CHXVELB6'),
-  (172, 56, 'ZQ4F2PMY'),
-  (52, 83, 'KPT3WU9U'),
-  (229, 115, 'E23W9TD8'),
-  (141, 227, 'SAN2TYEZ'),
-  (238, 122, 'EVZVCQNM'),
-  (164, 322, 'L7HMS4H8'),
-  (117, 296, 'KT9CZ8N5'),
-  (21, NULL, '5F8HNYHS'),
-  (127, 102, 'V695MTNQ'),
-  (65, NULL, 'HFHLKNFD'),
-  (40, 146, 'BGWLMDRG'),
-  (18, 269, 'NSEC3VJJ'),
-  (124, 397, 'YSUAB8ZB'),
-  (231, 404, '7SMZYUA3'),
-  (202, 385, 'USZTS7BH'),
-  (17, 21, 'SFAAGT96'),
-  (207, 89, 'SXVL99B7'),
-  (64, NULL, '3QA73DVA'),
-  (159, 304, 'V7DNR5RT'),
-  (167, 22, '3G3APLN8'),
-  (77, 167, 'ETWNRXBF'),
-  (210, 21, 'BWT5E6QL'),
-  (101, 46, 'KSTU8GPN'),
-  (183, 329, 'BPM3CYYG'),
-  (247, 76, 'YMPX85DQ'),
-  (244, 311, 'Q3UGMVJM'),
-  (69, 90, 'FLNK4LN6'),
-  (6, 375, '3CCRKFYN'),
-
-  (27, 351, 'W9QG5TRK'),
-  (29, 29, 'F6AS2N2G'),
-
-  (168, 391, 'F8N6YBE8'),
-
-  (115, 417, 'SLXM265J'),
-  (49, 394, 'G2M3LVP4'),
-
-  (198, 413, 'J7TUH27C'),
-
-  (129, 243, 'GZRV26L7'),
-
-  (113, 50, 'WJXQ3U9Y'),
-
-  (61, 390, 'P6N26T7U'),
-
-  (171, 9, 'XXMFEPZU'),
-  (246, 9, 'XXMFEPZU'),
-  (35, 426, 'RFJMQG6S'),
-  (220, 82, '9666SGQQ'),
-  (39, 421, '6JFPWR6B'),
-
-  (83, 43, 'T86UYFZW'),
-
-  (82, 50, 'G7DLZZPE'),
-  (15, 66, '6N4FX53N'),
-
-  (178, 285, 'BU5RS936'),
-  (55, 116, 'NDLSXM7S'),
-  (204, 306, 'MRQYYXRU'),
-  (195, 69, 'J73DLP9L'),
-
-  (151, 438, 'S75SNNEQ'),
-  (94, 199, 'YZK9KD2W'),
-  (24, 29, 'SHB9KVGK'),
-  (20, 21, 'LL7R64KZ'),
-  (81, 295, 'F9CJMY67'),
-  (54, 363, 'QGADW2WB'),
-  (223, NULL, 'NXKKXWR8'),
-  (9, 109, 'Q7T7TVCL'),
-  (16, 346, 'SHD7Y9DY'),
-  (232, 297, 'T2HKQD2X'),
-  (120, 17, 'WKPCY73S'),
-  (156, 443, 'P3Y66V2Z'),
-  (237, NULL, 'QHX3RXVB'),
-  
-  (136, 271, '6FME389L'),
-  (192, 450, 'AVNAXZHB'),
-  (111, 194, '266ZBSK3'),
-  (30, 223, 'UAW83ZQR'),
-  (224, 434, 'F5AGP9HL'),
-
-  (147, 283, 'KK38H974'),
-  (56, 318, 'TEESULJN'),
-  (3, 144, 'PK6BL46Q'),
-
-  (73, NULL, 'CJH6U2XK'),
-
-  (214, 233, 'KXWXSCZL'),
-
-  (222, 81, 'PXY4UV8N'),
-  (134, 421, 'PL548Y3M'),
-
-  (131, 239, 'E5UT7WY5'),
-  (126, 251, '2DYHW5S3'),
-  
-  (99, 8, 'MYPGX5PZ'),
-
-  (87, 377, 'HHGKSS2D'),
-  (221, 297, 'WWCT3RY2'),
-  (239, 6, 'ZLEUFULE'),
-  (75, NULL, 'EQ28XR9Z'),
-  (86, 423, 'A9ZLPCQC'),
-
-  (22, 306, 'QG4NGNRX'),
-  (89, NULL, 'B4449XPZ'),
-  (217, 81, '8UZ365NZ'),
-
-  (98, 184, 'HGXQ4Q5U'),
-  (19, 21, 'PK5W2XN5'),
-
+  (137, 121, 'C39ZU63V'),
+  (160, 2, 'XKZH92GJ'),
+  (7, 16, '3BAD9VT7'),
+  (76, 148, 'KNYFJPUY'),
+  (235, 9, 'PD3ZZJZG'),
+  (155, 122, '7DSPJV2Y'),
+  (154, 15, 'JVX3G3F9'),
+  (74, 27, 'XZ72ZDUY'),
+  (152, 22, 'UV66ZGAM'),
+  (119, 131, 'AAC8YWKE'),
+  (114, 37, 'A8MRG46G'),
+  (236, 143, 'ZT2FU5GU'),
+  (158, 34, 'L3GJK8LX'),
+  (197, 149, '7EG4SU5T'),
+  (196, 63, 'T65FWLHX'),
+  (243, 125, '235C7NVW'),
+  (72, 126, 'HHJQTRV9'),
+  (176, 100, 'WS649KB6'),
+  (80, 127, 'Z4EQYUWU'),
+  (60, 123, 'VFV63RPG'),
+  (226, 124, 'JADLUAP4'),
+  (96, 132, 'XZG8VFQS'),
+  (186, 150, '2H38NE2Q'),
+  (91, 144, 'N3VR49KE'),
+  (48, 135, 'GEJ2RSBX'),
+  (118, 136, 'Y326LPK3'),
+  (190, 137, 'PCPM8HTG'),
+  (189, 138, 'EBZEW9CR'),
+  (206, 151, 'LW44S65U'),
+  (36, 101, 'YVTWG8L8'),
+  (100, 102, 'D4XS8GCV'),
+  (79, 139, 'C3VATV99'),
+  (2, 128, 'MWPQQ5ZJ'),
+  (230, 140, '9AVEFY2G'),
+  (140, 141, '3AEYCNMF'),
+  (84, 152, 'M7RYHXC9'),
+  (218, 142, 'B6ANVVFA'),
+  (174, 153, 'TVYFMXRQ'),
+  (173, 103, 'F79NP53N'),
+  (143, 104, 'CHXVELB6'),
+  (172, 105, 'ZQ4F2PMY'),
+  (52, 106, 'KPT3WU9U'),
+  (229, 129, 'E23W9TD8'),
+  (141, 1, 'SAN2TYEZ'),
+  (238, 3, 'EVZVCQNM'),
+  (164, 49, 'L7HMS4H8'),
+  (117, 130, 'KT9CZ8N5'),
+  (21, 77, '5F8HNYHS'),
+  (127, 12, 'V695MTNQ'),
+  (65, 41, 'HFHLKNFD'),
+  (40, 88, 'BGWLMDRG'),
+  (18, 53, 'NSEC3VJJ'),
+  (124, 98, 'YSUAB8ZB'),
+  (231, 85, '7SMZYUA3'),
+  (202, 92, 'USZTS7BH'),
+  (17, 96, 'SFAAGT96'),
+  (207, 145, 'SXVL99B7'),
+  (64, 146, '3QA73DVA'),
+  (159, 147, 'V7DNR5RT'),
+  (167, 1, '3G3APLN8'),
+  (77, 2, 'ETWNRXBF'),
+  (210, 9, 'BWT5E6QL'),
+  (101, 15, 'KSTU8GPN'),
+  (183, 16, 'BPM3CYYG'),
+  (247, 22, 'YMPX85DQ'),
+  (244, 27, 'Q3UGMVJM'),
+  (69, 34, 'FLNK4LN6'),
+  (6, 37, '3CCRKFYN'),
+  (27, 63, 'W9QG5TRK'),
+  (29, 121, 'F6AS2N2G'),
+  (168, 122, 'F8N6YBE8'),
+  (115, 123, 'SLXM265J'),
+  (49, 125, 'G2M3LVP4'),
+  (198, 131, 'J7TUH27C'),
+  (129, 134, 'GZRV26L7'),
+  (113, 143, 'WJXQ3U9Y'),
+  (61, 148, 'P6N26T7U'),
+  (171, 149, 'XXMFEPZU'),
+  (246, 152, 'XXMFEPZU'),
+  (35, 1, 'RFJMQG6S'),
+  (220, 2, '9666SGQQ'),
+  (39, 121, '6JFPWR6B'),
+  (83, 122, 'T86UYFZW'),
+  (82, 123, 'G7DLZZPE'),
+  (15, 125, '6N4FX53N'),
+  (178, 131, 'BU5RS936'),
+  (55, 134, 'NDLSXM7S'),
+  (204, 143, 'MRQYYXRU'),
+  (195, 148, 'J73DLP9L'),
+  (151, 149, 'S75SNNEQ'),
+  (94, 152, 'YZK9KD2W'),
+  (24, 11, 'SHB9KVGK'),
+  (20, 15, 'LL7R64KZ'),
+  (81, 121, 'F9CJMY67'),
+  (54, 122, 'QGADW2WB'),
+  (223, 123, 'NXKKXWR8'),
+  (9, 125, 'Q7T7TVCL'),
+  (16, 131, 'SHD7Y9DY'),
+  (232, 134, 'T2HKQD2X'),
+  (120, 143, 'WKPCY73S'),
+  (156, 148, 'P3Y66V2Z'),
+  (237, 149, 'QHX3RXVB'),
+  (136, 152, '6FME389L'),
+  (192, 31, 'AVNAXZHB'),
+  (111, 25, '266ZBSK3'),
+  (30, 26, 'UAW83ZQR'),
+  (224, 69, 'F5AGP9HL'),
+  (147, 83, 'KK38H974'),
+  (56, 42, 'TEESULJN'),
+  (3, 48, 'PK6BL46Q'),
+  (73, 114, 'CJH6U2XK'),
+  (214, 40, 'KXWXSCZL'),
+  (222, 43, 'PXY4UV8N'),
+  (134, 74, 'PL548Y3M'),
+  (131, 56, 'E5UT7WY5'),
+  (126, 91, '2DYHW5S3'),
+  (99, 36, 'MYPGX5PZ'),
+  (87, 68, 'HHGKSS2D'),
+  (221, 79, 'WWCT3RY2'),
+  (239, 21, 'ZLEUFULE'),
+  (75, 65, 'EQ28XR9Z'),
+  (86, 107, 'A9ZLPCQC'),
+  (22, 6, 'QG4NGNRX'),
+  (89, 44, 'B4449XPZ'),
+  (217, 60, '8UZ365NZ'),
+  (98, 35, 'HGXQ4Q5U'),
+  (19, 39, 'PK5W2XN5'),
   (11, NULL, 'EPEZH8AU'),
-
-  (215, 266, '2HNWGADA'),
-
-  (104, 249, 'NNTP37U6'),
-  (95, 15, '6EQRGWVD'),
-
-  (211, 188, 'PQDZ7FMH'),
-
-  (50, 286, 'AFGGPCAG'),
-
-  (1, 9, 'X6AXTHVZ'),
-  (208, 87, 'JZ8L62C9'),
-
-  (92, 242, 'LCGVSSCG'),
-
-  (180, 363, 'XRN5G53J'),
-
-  (97, 157, 'AARTA9YX'),
-
-  (26, NULL, '5L7KYZYA'),
-
-  (148, 283, 'VVB637GB'),
-
-  (90, 269, '6MJ27H9T'),
-
-
-
-
-
-  (227, 260, 'W3XDM7JN'),
-  (110, 40, 'BEAZAQXX'),
-
-  (23, NULL, 'XKHJ6PMR'),
-
-  (249, 244, 'SLMTVK2G'),
-  (57, 318, '7NJ9W4BL'),
-
-  (128, 239, 'FTQB6RDQ'),
-
-  (59, 190, '4URVCS2F'),
-  (145, 155, 'UWGZ23QB'),
-
-  (34, 379, 'V54B6TXL'),
-  (153, 427, 'YW6C75NL'),
-
-  (41, 430, 'C5TV2K55'),
-  (38, 218, 'QUWLFVGT'),
-  (133, 19, 'U6A3KYL9'),
-
-  (150, 139, '8627DZTM'),
-
-  (125, 78, '2LT9RJD3'),
-
-  (14, 346, 'UKL85SDZ');
+  (215, 7, '2HNWGADA'),
+  (104, 51, 'NNTP37U6'),
+  (95, NULL, '6EQRGWVD'),
+  (211, 97, 'PQDZ7FMH'),
+  (50, 113, 'AFGGPCAG'),
+  (1, NULL, 'X6AXTHVZ'),
+  (208, 76, 'JZ8L62C9'),
+  (92, 5, 'LCGVSSCG'),
+  (180, 8, 'XRN5G53J'),
+  (97, 78, 'AARTA9YX'),
+  (26, 46, '5L7KYZYA'),
+  (148, 66, 'VVB637GB'),
+  (90, 14, '6MJ27H9T'),
+  (227, 17, 'W3XDM7JN'),
+  (110, 33, 'BEAZAQXX'),
+  (23, 29, 'XKHJ6PMR'),
+  (249, 87, 'SLMTVK2G'),
+  (57, 4, '7NJ9W4BL'),
+  (128, 23, 'FTQB6RDQ'),
+  (59, 62, '4URVCS2F'),
+  (145, 10, 'UWGZ23QB'),
+  (34, 20, 'V54B6TXL'),
+  (153, 71, 'YW6C75NL'),
+  (41, 24, 'C5TV2K55'),
+  (38, 32, 'QUWLFVGT'),
+  (133, 59, 'U6A3KYL9'),
+  (150, 13, '8627DZTM'),
+  (125, 19, '2LT9RJD3'),
+  (14, 38, 'UKL85SDZ');
 
 -- ==================== created_at (relative to users.created_at) =====================
   -- 1) managers: after the user's created_at. If the user's provider row is a "provider first" case
@@ -1173,73 +1125,26 @@
     -- 32-character unambiguous alphabet (same style as existing invite codes)
     SELECT '23456789ABCDEFGHJKLMNPQRSTUVWXYZ' AS chars
   ),
+  manager_weights AS (
+    -- إعطاء وزن عشوائي لكل مدير جديد (من 904 لفوق) بناءً على محافظته
+    SELECT m.user_id AS mgr,
+           CASE 
+             WHEN c.city IN ('cairo', 'giza', 'alexandria') THEN 5 + ABS(RANDOM()) % 6  
+             WHEN c.city IN ('sharqia', 'dakahlia', 'beheira', 'minya', 'asyut', 'sohag', 'qalyubia', 'gharbia', 'monufia', 'qena') THEN 2 + ABS(RANDOM()) % 4  
+             WHEN c.city IN ('faiyum', 'beni suef', 'kafr el sheikh', 'damietta', 'ismailia', 'port said', 'suez', 'aswan', 'luxor') THEN 1 + ABS(RANDOM()) % 3  
+             ELSE 1 + ABS(RANDOM()) % 2 
+           END AS weight
+    FROM managers m
+    JOIN companies c ON c.manager_id = m.id
+    WHERE m.user_id >= 904
+  ),
+  repeater(num) AS (
+    SELECT 1 UNION ALL SELECT num + 1 FROM repeater WHERE num < 15
+  ),
   pool AS (
-    SELECT mgr, ROW_NUMBER() OVER (ORDER BY mgr) - 1 AS k
-    FROM (
-      -- Egypt (50)
-      SELECT 912 AS mgr UNION ALL
-      SELECT 913 UNION ALL
-      SELECT 914 UNION ALL
-      SELECT 915 UNION ALL
-      SELECT 916 UNION ALL
-      SELECT 917 UNION ALL
-      SELECT 918 UNION ALL
-      SELECT 919 UNION ALL
-      SELECT 920 UNION ALL
-      SELECT 921 UNION ALL
-      SELECT 922 UNION ALL
-      SELECT 923 UNION ALL
-      SELECT 969 UNION ALL
-      SELECT 970 UNION ALL
-      SELECT 971 UNION ALL
-      SELECT 972 UNION ALL
-      SELECT 973 UNION ALL
-      SELECT 1007 UNION ALL
-      SELECT 1008 UNION ALL
-      SELECT 1009 UNION ALL
-      SELECT 1010 UNION ALL
-      SELECT 1011 UNION ALL
-      SELECT 1012 UNION ALL
-      SELECT 1048 UNION ALL
-      SELECT 1049 UNION ALL
-      SELECT 1070 UNION ALL
-      SELECT 1071 UNION ALL
-      SELECT 1082 UNION ALL
-      SELECT 1083 UNION ALL
-      SELECT 1092 UNION ALL
-      SELECT 1093 UNION ALL
-      SELECT 1106 UNION ALL
-      SELECT 1107 UNION ALL
-      SELECT 1119 UNION ALL
-      SELECT 1120 UNION ALL
-      SELECT 1113 UNION ALL
-      SELECT 1114 UNION ALL
-      SELECT 1125 UNION ALL
-      SELECT 1126 UNION ALL
-      SELECT 1159 UNION ALL
-      SELECT 1160 UNION ALL
-      SELECT 1152 UNION ALL
-      SELECT 1146 UNION ALL
-      SELECT 1147 UNION ALL
-      SELECT 1185 UNION ALL
-      SELECT 1186 UNION ALL
-      SELECT 1200 UNION ALL
-      SELECT 1099 UNION ALL
-      SELECT 1129 UNION ALL
-      SELECT 1138 UNION ALL
-
-      -- Extra slots for bigger companies (26)
-      SELECT 916 UNION ALL
-      SELECT 917 UNION ALL
-      SELECT 921 UNION ALL
-      SELECT 922 UNION ALL
-      SELECT 972 UNION ALL
-      SELECT 973 UNION ALL
-      SELECT 1010 UNION ALL
-      SELECT 1011 UNION ALL
-      SELECT 1012 UNION ALL
-      SELECT 1092 UNION ALL
-    )
+    SELECT mw.mgr, ROW_NUMBER() OVER (ORDER BY RANDOM()) - 1 AS k
+    FROM manager_weights mw
+    JOIN repeater r ON r.num <= mw.weight
   )
   INSERT INTO providers (user_id, manager_id, invite_code, created_at)
   SELECT pu.uid,
@@ -1257,7 +1162,7 @@
   FROM pu
   CROSS JOIN alphabet a
   JOIN users u ON u.id = pu.uid
-  JOIN pool ON pool.k = pu.uid % 136
+  JOIN pool ON pool.k = pu.uid % (SELECT COUNT(*) FROM pool)
   JOIN managers m ON m.user_id = pool.mgr
   WHERE NOT EXISTS (SELECT 1 FROM providers p WHERE p.user_id = pu.uid);
 

@@ -1018,7 +1018,7 @@
   (95, NULL, '6EQRGWVD'),
   (211, 97, 'PQDZ7FMH'),
   (50, 113, 'AFGGPCAG'),
-  (1, NULL, 'X6AXTHVZ'),
+  (1, 149, 'X6AXTHVZ'),
   (208, 76, 'JZ8L62C9'),
   (92, 5, 'LCGVSSCG'),
   (180, 8, 'XRN5G53J'),
@@ -1498,7 +1498,7 @@
   --    rate_m    : closed queues per month, 15..25
   CREATE TEMP TABLE _pr1 AS
   SELECT b.pid, b.pstart, b.company_id,
-    MAX(0, MIN(CAST(julianday(n.today) - julianday(date(b.pstart)) AS INT), 1095)) AS hist_span,
+    MAX(0, MIN(CAST(julianday(n.today) - julianday(date(b.pstart)) AS INT), 730)) AS hist_span,
     15 + ABS(RANDOM()) % 11      AS rate_m,
     90 + ABS(RANDOM()) % 21      AS noise,          -- 90..110 %
     co.open_m, co.span, co.share_pct,
@@ -2337,3 +2337,11 @@
   DROP TABLE _closed;
 
   COMMIT;
+
+
+SELECT name, ROUND(SUM(pgsize)/1024.0/1024.0, 1) AS mb
+FROM dbstat GROUP BY name ORDER BY mb DESC;
+
+SELECT (SELECT COUNT(*) FROM queues) AS queues,
+       (SELECT COUNT(*) FROM queue_entries) AS entries,
+       (SELECT COUNT(*) FROM service_logs) AS logs;

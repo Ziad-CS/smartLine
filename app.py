@@ -361,7 +361,7 @@ def findQueue() :
 
   for company in companies :
     queues = db.execute("SELECT queues.* FROM queues JOIN providers ON providers.id = queues.provider_id JOIN managers ON managers.id = providers.manager_id WHERE queues.status = 'active' AND managers.id = ?", company["manager_id"])
-    logs = db.execute("SELECT service_logs.* FROM service_logs JOIN queues ON queues.id = service_logs.queue_id WHERE queues.company_id = ? AND stars IS NOT NULL", company["comp_id"])
+    logs = db.execute("SELECT service_logs.stars FROM service_logs JOIN queues ON queues.id = service_logs.queue_id WHERE queues.company_id = ? AND stars IS NOT NULL", company["comp_id"])
     open_counters = len(queues)
     if logs :
       reviews = 0
@@ -380,7 +380,7 @@ def findQueue() :
     # lowest_time_id = -1
     for queue in queues :
       total_est_time = 0
-      prov_log = db.execute("SELECT service_logs.* FROM service_logs WHERE end_time IS NOT NULL AND queue_id IN (SELECT id FROM queues WHERE provider_id = ? AND queues.company_id = ?) ORDER BY start_time DESC LIMIT 100", queue["provider_id"], company['comp_id'])
+      prov_log = db.execute("SELECT service_logs.start_time, service_logs.end_time FROM service_logs WHERE end_time IS NOT NULL AND queue_id IN (SELECT id FROM queues WHERE provider_id = ? AND queues.company_id = ?) ORDER BY start_time DESC LIMIT 100", queue["provider_id"], company['comp_id'])
       avg_prov_time = estimation(prov_log)
       if avg_prov_time :
         line = db.execute("SELECT * FROM queue_entries WHERE queue_id = ? AND status != 'done'", queue["id"])
@@ -433,7 +433,7 @@ def QueuesOfCompany(comp_id) :
         company["category"] = 'Other'
   # * calc stars and reviews
   queues = db.execute("SELECT * FROM queues WHERE closed_at IS NULL AND queues.company_id = ?", company["id"])
-  logs = db.execute("SELECT service_logs.* FROM service_logs JOIN queues ON queues.id = service_logs.queue_id WHERE queues.company_id = ? AND stars IS NOT NULL", company["id"])
+  logs = db.execute("SELECT service_logs.stars FROM service_logs JOIN queues ON queues.id = service_logs.queue_id WHERE queues.company_id = ? AND stars IS NOT NULL", company["id"])
   if logs :
     reviews = 0
     rate = 0
@@ -504,7 +504,7 @@ def QueuesOfCompany(comp_id) :
     prov = db.execute("SELECT users.* FROM users JOIN providers ON providers.user_id = users.id WHERE providers.id = ?", queue["provider_id"])[0]
     serv = db.execute("SELECT * FROM services WHERE id = ?", queue["service_id"])
     type = serv[0]['name'] if serv else 'General Service'
-    prov_log_limit = db.execute("SELECT service_logs.* FROM service_logs WHERE end_time IS NOT NULL AND queue_id IN (SELECT id FROM queues WHERE provider_id = ? AND queues.company_id = ?) ORDER BY start_time DESC LIMIT 100", queue["provider_id"], comp_id)
+    prov_log_limit = db.execute("SELECT service_logs.start_time, service_logs.end_time FROM service_logs WHERE end_time IS NOT NULL AND queue_id IN (SELECT id FROM queues WHERE provider_id = ? AND queues.company_id = ?) ORDER BY start_time DESC LIMIT 100", queue["provider_id"], comp_id)
     line = db.execute("SELECT * FROM queue_entries WHERE queue_id = ? AND status = 'waiting'", queue["id"])
     avg_prov_time = estimation(prov_log_limit)
     # customer_est = []
@@ -530,7 +530,7 @@ def QueuesOfCompany(comp_id) :
         user_log = db.execute("SELECT * FROM service_logs WHERE end_time IS NOT NULL AND user_id = ? ORDER BY start_time DESC LIMIT 5", user["user_id"])
         total_est_time += estimation(avg_prov_time, user_log)
 
-    prov_log = db.execute("SELECT service_logs.* FROM service_logs WHERE end_time IS NOT NULL AND queue_id IN (SELECT id FROM queues WHERE provider_id = ? AND queues.company_id = ?)", queue["provider_id"], comp_id)
+    prov_log = db.execute("SELECT service_logs.stars FROM service_logs WHERE end_time IS NOT NULL AND queue_id IN (SELECT id FROM queues WHERE provider_id = ? AND queues.company_id = ?)", queue["provider_id"], comp_id)
     if prov_log :
       reviews = 0
       rate = 0
@@ -650,7 +650,7 @@ def fastestQueue() :
     
     # prov = db.execute("SELECT * FROM providers WHERE providers.id = ?", q["provider_id"])[0]
     prov_log_limit = db.execute("""
-                                SELECT service_logs.* FROM service_logs 
+                                SELECT service_logs.start_time, service_logs.end_time FROM service_logs 
                                 WHERE end_time IS NOT NULL AND queue_id IN (SELECT id FROM queues WHERE provider_id = ? AND company_id = ?) 
                                 ORDER BY start_time DESC LIMIT 100""",
                                 q["provider_id"], comp_id)
@@ -716,7 +716,7 @@ def myQueueCustomer() :
     prov_info = db.execute("SELECT * FROM users WHERE id = ?", prov[0]["user_id"])
     manager = db.execute("SELECT * FROM managers WHERE id = ?", prov[0]["manager_id"])
     company = db.execute("SELECT * FROM companies WHERE manager_id = ?", manager[0]["id"])
-    prov_log_limit =  db.execute("SELECT service_logs.* FROM service_logs WHERE end_time IS NOT NULL AND queue_id IN (SELECT id FROM queues WHERE provider_id = ? AND company_id = ?) ORDER BY start_time DESC LIMIT 100", queue[0]["provider_id"], company[0]['id'])
+    prov_log_limit =  db.execute("SELECT service_logs.start_time, service_logs.end_time FROM service_logs WHERE end_time IS NOT NULL AND queue_id IN (SELECT id FROM queues WHERE provider_id = ? AND company_id = ?) ORDER BY start_time DESC LIMIT 100", queue[0]["provider_id"], company[0]['id'])
     prov_logs = db.execute("SELECT service_logs.id, stars FROM service_logs JOIN queues ON service_logs.queue_id = queues.id WHERE provider_id = ? AND queues.company_id = ? AND stars IS NOT NULL", prov[0]["id"], company[0]['id'])
     services = db.execute("SELECT * FROM services WHERE id = ?", queue[0]["service_id"])
     user_log = db.execute("SELECT * FROM service_logs WHERE end_time IS NOT NULL AND user_id = ? ORDER BY start_time DESC LIMIT 5", session["user_id"])
@@ -738,7 +738,7 @@ def myQueueCustomer() :
     prov_info = db.execute("SELECT * FROM users WHERE id = ?", prov[0]["user_id"])
     manager = db.execute("SELECT * FROM managers WHERE id = ?", prov[0]["manager_id"])
     company = db.execute("SELECT * FROM companies WHERE manager_id = ?", manager[0]["id"])
-    prov_log_limit = db.execute("SELECT service_logs.* FROM service_logs WHERE end_time IS NOT NULL AND queue_id IN (SELECT id FROM queues WHERE provider_id = ? AND company_id = ?) ORDER BY start_time DESC LIMIT 100", queue[0]["provider_id"], company[0]['id'])
+    prov_log_limit = db.execute("SELECT service_logs.start_time, service_logs.end_time FROM service_logs WHERE end_time IS NOT NULL AND queue_id IN (SELECT id FROM queues WHERE provider_id = ? AND company_id = ?) ORDER BY start_time DESC LIMIT 100", queue[0]["provider_id"], company[0]['id'])
     prov_logs = db.execute("SELECT service_logs.id, stars FROM service_logs JOIN queues ON service_logs.queue_id = queues.id WHERE provider_id = ? AND queues.company_id = ? AND stars IS NOT NULL", prov[0]["id"], company[0]['id'])
     services = db.execute("SELECT * FROM services WHERE id = ?", queue[0]["service_id"])
   else :
@@ -842,7 +842,7 @@ def dataMyQueueCustomer() :
     prov_info = db.execute("SELECT * FROM users WHERE id = ?", prov[0]["user_id"])
     manager = db.execute("SELECT * FROM managers WHERE id = ?", prov[0]["manager_id"])
     company = db.execute("SELECT * FROM companies WHERE manager_id = ?", manager[0]["id"])
-    prov_log_limit =  db.execute("SELECT service_logs.* FROM service_logs WHERE end_time IS NOT NULL AND queue_id IN (SELECT id FROM queues WHERE provider_id = ? AND company_id = ?) ORDER BY start_time DESC LIMIT 100", queue[0]["provider_id"], company[0]['id'])
+    prov_log_limit =  db.execute("SELECT service_logs.start_time, service_logs.end_time FROM service_logs WHERE end_time IS NOT NULL AND queue_id IN (SELECT id FROM queues WHERE provider_id = ? AND company_id = ?) ORDER BY start_time DESC LIMIT 100", queue[0]["provider_id"], company[0]['id'])
     prov_logs = db.execute("SELECT service_logs.id, stars FROM service_logs JOIN queues ON service_logs.queue_id = queues.id WHERE provider_id = ? AND queues.company_id = ? AND stars IS NOT NULL", prov[0]["id"], company[0]['id'])
     services = db.execute("SELECT * FROM services WHERE id = ?", queue[0]["service_id"])
   elif session.get("login_state") == 2 :
@@ -861,7 +861,7 @@ def dataMyQueueCustomer() :
     prov_info = db.execute("SELECT * FROM users WHERE id = ?", prov[0]["user_id"])
     manager = db.execute("SELECT * FROM managers WHERE id = ?", prov[0]["manager_id"])
     company = db.execute("SELECT * FROM companies WHERE manager_id = ?", manager[0]["id"])
-    prov_log_limit = db.execute("SELECT service_logs.* FROM service_logs WHERE end_time IS NOT NULL AND queue_id IN (SELECT id FROM queues WHERE provider_id = ? AND company_id = ?) ORDER BY start_time DESC LIMIT 100", queue[0]["provider_id"], company[0]['id'])
+    prov_log_limit = db.execute("SELECT service_logs.start_time, service_logs.end_time FROM service_logs WHERE end_time IS NOT NULL AND queue_id IN (SELECT id FROM queues WHERE provider_id = ? AND company_id = ?) ORDER BY start_time DESC LIMIT 100", queue[0]["provider_id"], company[0]['id'])
     prov_logs = db.execute("SELECT service_logs.id, stars FROM service_logs JOIN queues ON service_logs.queue_id = queues.id WHERE provider_id = ? AND queues.company_id = ? AND stars IS NOT NULL", prov[0]["id"], company[0]['id'])
     services = db.execute("SELECT * FROM services WHERE id = ?", queue[0]["service_id"])
   else :

@@ -919,15 +919,6 @@ function updateRatingText(text) {
   }
 
 
-
-
-  // !=========================================================================
-  // !=========================================================================
-  // !=========================================================================
-  // !=========================================================================
-  // !=========================================================================
-  // !=========================================================================
-  
   // SmartLine home page: the "Try the estimate" demo.
 // Same blend as the real estimation(): 70% provider average + 30% personal pace.
 document.addEventListener("DOMContentLoaded", () => {
@@ -985,4 +976,25 @@ document.addEventListener("DOMContentLoaded", () => {
   avg.addEventListener("input", update);
   paces.forEach((p) => p.addEventListener("change", update));
   update();
+});
+
+// fix spam to open page
+let navigating = false;
+
+document.addEventListener('click', (e) => {
+  const link = e.target.closest('a[href]');
+  if (!link) return;
+  if (navigating) {
+    e.preventDefault();
+    return;
+  }
+  if (link.target === '_blank' || link.origin !== location.origin) return;
+
+  navigating = true;
+  document.body.classList.add('is-navigating');
+}, true);
+
+window.addEventListener('pageshow', () => {
+  navigating = false;
+  document.body.classList.remove('is-navigating');
 });

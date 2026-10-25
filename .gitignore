@@ -3,7 +3,7 @@ UI/
 *.pyc
 .env
 venv/
-# *.db
+*.db
 smartline_past.db
 *.env
 .DS_Store

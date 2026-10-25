@@ -2338,10 +2338,3 @@
 
   COMMIT;
 
-
-SELECT name, ROUND(SUM(pgsize)/1024.0/1024.0, 1) AS mb
-FROM dbstat GROUP BY name ORDER BY mb DESC;
-
-SELECT (SELECT COUNT(*) FROM queues) AS queues,
-       (SELECT COUNT(*) FROM queue_entries) AS entries,
-       (SELECT COUNT(*) FROM service_logs) AS logs;

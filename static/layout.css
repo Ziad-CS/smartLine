@@ -1482,3 +1482,7 @@ main {
 @media (prefers-reduced-motion: reduce) {
   .sl-home-person.sl-home-pop { animation: none; }
 }
+
+/* fix spam to open page */
+.is-navigating { cursor: progress; }
+.is-navigating a, .is-navigating button { pointer-events: none; opacity: .6; }

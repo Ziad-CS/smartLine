@@ -7,6 +7,10 @@
   DROP TABLE IF EXISTS managers;
   DROP TABLE IF EXISTS companies;
   DROP TABLE IF EXISTS users;
+  DROP TABLE IF EXISTS companies_fts;
+  DROP TABLE IF EXISTS companies_ai;
+  DROP TABLE IF EXISTS companies_ad;
+  DROP TABLE IF EXISTS companies_au;
 
 
 CREATE TABLE users (

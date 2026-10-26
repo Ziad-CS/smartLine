@@ -2298,3 +2298,79 @@
 
   COMMIT;
 
+-- ==================== Realistic History for id 171 ====================
+  BEGIN;
+
+  CREATE TEMP TABLE _p171 AS
+  SELECT p.id AS pid, c.id AS cid
+  FROM providers p
+  JOIN companies c ON c.manager_id = p.manager_id
+  WHERE p.user_id = 171;
+
+  DELETE FROM service_logs WHERE queue_id IN (SELECT id FROM queues WHERE provider_id = (SELECT pid FROM _p171));
+  DELETE FROM queue_entries WHERE queue_id IN (SELECT id FROM queues WHERE provider_id = (SELECT pid FROM _p171));
+  DELETE FROM queues WHERE provider_id = (SELECT pid FROM _p171);
+
+  CREATE TEMP TABLE _extra_q AS
+  WITH RECURSIVE days(d) AS (
+      SELECT 1 UNION ALL SELECT d + 1 FROM days WHERE d <= 730
+  ),
+  valid_days AS (
+      SELECT date('now', '+3 hours', '-' || d || ' days') AS q_date
+      FROM days
+      WHERE strftime('%w', date('now', '+3 hours', '-' || d || ' days')) != '5'
+        AND ABS(RANDOM() % 100) < 90
+  )
+  SELECT 
+      (SELECT pid FROM _p171) AS pid,
+      (SELECT cid FROM _p171) AS cid,
+      datetime(q_date, '+' || (9 + (ABS(RANDOM()) % 4)) || ' hours', '+' || (ABS(RANDOM()) % 60) || ' minutes') AS qc,
+      180 + ABS(RANDOM()) % 180 AS duration_mins
+  FROM valid_days;
+
+  -- 4. إدراج الطوابير
+  INSERT INTO queues (provider_id, company_id, status, service_id, created_at, closed_at)
+  SELECT pid, cid, 'closed',
+      (SELECT id FROM services WHERE company_id = cid AND is_active = 1 ORDER BY RANDOM() LIMIT 1),
+      qc,
+      datetime(qc, '+' || duration_mins || ' minutes')
+  FROM _extra_q;
+
+  CREATE TEMP TABLE _new_qids AS
+  SELECT id AS qid, created_at, closed_at, 
+        (julianday(closed_at) - julianday(created_at)) * 1440 AS duration_mins,
+        5 + ABS(RANDOM()) % 26 AS num_entries -- من 5 لـ 30 عميل
+  FROM queues
+  WHERE provider_id = (SELECT pid FROM _p171);
+
+  CREATE TEMP TABLE _k_entries AS
+  WITH RECURSIVE k(pos) AS (SELECT 1 UNION ALL SELECT pos + 1 FROM k WHERE pos <= 30)
+  SELECT pos FROM k;
+
+  INSERT INTO queue_entries (queue_id, user_id, user_name, position, status, joined_at, ip_address)
+  SELECT n.qid, NULL, 'guest_' || (ABS(RANDOM()) % 9999), k.pos, 'done',
+      datetime(n.created_at, '+' || CAST((k.pos * n.duration_mins / (n.num_entries + 1)) AS INTEGER) || ' minutes'),
+      '41.' || (ABS(RANDOM()) % 200) || '.0.1'
+  FROM _new_qids n
+  JOIN _k_entries k ON k.pos <= n.num_entries;
+
+  INSERT INTO service_logs (queue_id, queue_entry_id, user_id, user_name, company_name, start_time, end_time, ip_address, stars)
+  SELECT e.queue_id, e.id, e.user_id, e.user_name, 
+      (SELECT name FROM companies WHERE id = (SELECT cid FROM _p171)),
+      datetime(e.joined_at, '+1 minutes'),
+      datetime(e.joined_at, '+' || (5 + ABS(RANDOM()) % 15) || ' minutes'), 
+      e.ip_address,
+      CASE 
+          WHEN ABS(RANDOM()) % 100 < 10 THEN NULL 
+          WHEN ABS(RANDOM()) % 100 < 80 THEN 5 
+          ELSE 4 
+      END 
+  FROM queue_entries e
+  WHERE e.queue_id IN (SELECT qid FROM _new_qids);
+
+  DROP TABLE _p171;
+  DROP TABLE _extra_q;
+  DROP TABLE _new_qids;
+  DROP TABLE _k_entries;
+
+  COMMIT;

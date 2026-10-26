@@ -29,6 +29,7 @@ Session(app)
 import sqlite3
 import os
 
+run_sql_file("smartline.db", "schema.sql")
 run_sql_file("smartline.db", "smallSeed.sql")
 
 db = SQL("sqlite:///smartline.db")

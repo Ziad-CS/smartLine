@@ -5,7 +5,7 @@ from flask_session import Session
 import requests
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from functions import run_sql_file, login_required, guest_ban, send_otp, calculate_change, limitFloat, estimation, clear_user_session, getCities, toMinutes, get_client_ip, period_bounds, _pct, _period_ranges, _summary, _series, _last_12_months, cairo_now
+from functions import run_sql_file, refresh_demo_data, login_required, guest_ban, send_otp, calculate_change, limitFloat, estimation, clear_user_session, getCities, toMinutes, get_client_ip, period_bounds, _pct, _period_ranges, _summary, _series, _last_12_months, cairo_now
 from datetime import datetime, timedelta
 from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
 import random
@@ -29,8 +29,9 @@ Session(app)
 import sqlite3
 import os
 
-run_sql_file("smartline.db", "schema.sql")
-run_sql_file("smartline.db", "smallSeed.sql")
+# run_sql_file("smartline.db", "schema.sql")
+# run_sql_file("smartline.db", "smallSeed.sql")
+refresh_demo_data("smartline.db")
 
 db = SQL("sqlite:///smartline.db")
 app.jinja_env.filters["near"] = limitFloat

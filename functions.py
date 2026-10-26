@@ -21,16 +21,40 @@ import sqlite3
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-def run_sql_file(db_path, sql_path):
-  with open(sql_path, "r", encoding="utf-8") as f:
-    script = f.read()
-  conn = sqlite3.connect(db_path)
-  try:
-    conn.executescript(script)
-    conn.commit()
-  finally:
-    conn.close()
+# def run_sql_file(db_path, sql_path):
+#   with open(sql_path, "r", encoding="utf-8") as f:
+#     script = f.read()
+#   conn = sqlite3.connect(db_path)
+#   try:
+#     conn.executescript(script)
+#     conn.commit()
+#   finally:
+#     conn.close()
 
+SHIFT_COLUMNS = [
+    ("users", "created_at"), ("managers", "created_at"),
+    ("companies", "created_at"), ("providers", "created_at"),
+    ("queues", "created_at"), ("queues", "closed_at"),
+    ("queue_entries", "joined_at"),
+    ("service_logs", "start_time"), ("service_logs", "end_time"),
+    ("services", "created_at"),
+]
+
+def refresh_demo_data(db_path):
+    con = sqlite3.connect(db_path)
+    delta = con.execute("""
+      SELECT CAST(strftime('%s','now','+3 hours')
+                  - strftime('%s', MAX(joined_at)) AS INTEGER)
+      FROM queue_entries
+    """).fetchone()[0]
+
+    if delta and delta > 3600:
+      with con:
+        for table, col in SHIFT_COLUMNS:
+          con.execute(
+              f"UPDATE {table} SET {col} = datetime({col}, '+{int(delta)} seconds')"
+          )
+    con.close()
 
 db = SQL("sqlite:///smartline.db")
 

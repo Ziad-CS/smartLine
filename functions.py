@@ -101,7 +101,7 @@ def clear_user_session():
     for key in keys_to_clear:
         session.pop(key, None)
         
-FROZEN_START = datetime(2026, 10, 24, 9, 20, 0)
+FROZEN_START = datetime(2026, 10, 24, 1, 20, 0)
 _BOOT = time.monotonic()
 
 def cairo_now():

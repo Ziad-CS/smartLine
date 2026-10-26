@@ -373,23 +373,76 @@ def findQueue() :
       case 'other':
         company["category"] = 'Other'
 
+  # 1. Get all active queues for the retrieved companies
+  manager_ids = list(set([c["manager_id"] for c in companies if c.get("manager_id")]))
+  queues_by_manager = {}
+  queue_ids = []
+
+  if manager_ids:
+      placeholders_m = ','.join(['?'] * len(manager_ids))
+      all_queues = db.execute(f"SELECT queues.*, managers.id AS manager_id FROM queues JOIN providers ON providers.id = queues.provider_id JOIN managers ON managers.id = providers.manager_id WHERE queues.status = 'active' AND managers.id IN ({placeholders_m})", *manager_ids)
+      
+      for q in all_queues:
+          queues_by_manager.setdefault(q["manager_id"], []).append(q)
+          queue_ids.append(q["id"])
+
+  queue_ids = list(set(queue_ids))
+
+  # 2. Get all provider logs (prov_log) for these queues
+  prov_logs_by_prov_comp = {}
+  if queue_ids:
+      placeholders_q = ','.join(['?'] * len(queue_ids))
+      all_prov_logs = db.execute(f"""
+          SELECT service_logs.start_time, service_logs.end_time, queues.provider_id, queues.company_id 
+          FROM service_logs 
+          JOIN queues ON service_logs.queue_id = queues.id
+          WHERE service_logs.end_time IS NOT NULL AND service_logs.queue_id IN ({placeholders_q})
+          ORDER BY service_logs.start_time DESC
+      """)
+      for log in all_prov_logs:
+          key = (log["provider_id"], log["company_id"])
+          prov_logs_by_prov_comp.setdefault(key, []).append(log)
+
+  # 3. Get all queue entries (line)
+  lines_by_queue = {}
+  user_ids = []
+  if queue_ids:
+      all_lines = db.execute(f"SELECT * FROM queue_entries WHERE status != 'done' AND queue_id IN ({placeholders_q})")
+      for line_item in all_lines:
+          lines_by_queue.setdefault(line_item["queue_id"], []).append(line_item)
+          user_ids.append(line_item["user_id"])
+
+  user_ids = list(set(user_ids))
+
+  # 4. Get all user logs (user_log)
+  user_logs_by_user = {}
+  if user_ids:
+      placeholders_u = ','.join(['?'] * len(user_ids))
+      all_user_logs = db.execute(f"SELECT * FROM service_logs WHERE end_time IS NOT NULL AND user_id IN ({placeholders_u}) ORDER BY start_time DESC")
+      for log in all_user_logs:
+          user_logs_by_user.setdefault(log["user_id"], []).append(log)
+
   for company in companies :
-    queues = db.execute("SELECT queues.* FROM queues JOIN providers ON providers.id = queues.provider_id JOIN managers ON managers.id = providers.manager_id WHERE queues.status = 'active' AND managers.id = ?", company["manager_id"])
+    # queues = db.execute("SELECT queues.* FROM queues JOIN providers ON providers.id = queues.provider_id JOIN managers ON managers.id = providers.manager_id WHERE queues.status = 'active' AND managers.id = ?", company["manager_id"])
+    queues = queues_by_manager.get(company["manager_id"], [])
     open_counters = len(queues)
 
     lowest_time = float('inf')
     # lowest_time_id = -1
     for queue in queues :
       total_est_time = 0
-      prov_log = db.execute("SELECT service_logs.start_time, service_logs.end_time FROM service_logs WHERE end_time IS NOT NULL AND queue_id IN (SELECT id FROM queues WHERE provider_id = ? AND queues.company_id = ?) ORDER BY start_time DESC LIMIT 100", queue["provider_id"], company['comp_id'])
+      # prov_log = db.execute("SELECT service_logs.start_time, service_logs.end_time FROM service_logs WHERE end_time IS NOT NULL AND queue_id IN (SELECT id FROM queues WHERE provider_id = ? AND queues.company_id = ?) ORDER BY start_time DESC LIMIT 100", queue["provider_id"], company['comp_id'])
+      prov_log = prov_logs_by_prov_comp.get((queue["provider_id"], company['comp_id']), [])[:100]
       avg_prov_time = estimation(prov_log)
       if avg_prov_time :
-        line = db.execute("SELECT * FROM queue_entries WHERE queue_id = ? AND status != 'done'", queue["id"])
+        # line = db.execute("SELECT * FROM queue_entries WHERE queue_id = ? AND status != 'done'", queue["id"])
+        line = lines_by_queue.get(queue["id"], [])
         if not line:
           lowest_time = 0
           break
         for user in line :
-          user_log = db.execute("SELECT * FROM service_logs WHERE end_time IS NOT NULL AND user_id = ? ORDER BY start_time DESC LIMIT 5", user["user_id"])
+          # user_log = db.execute("SELECT * FROM service_logs WHERE end_time IS NOT NULL AND user_id = ? ORDER BY start_time DESC LIMIT 5", user["user_id"])
+          user_log = user_logs_by_user.get(user["user_id"], [])[:5]
           avg_customer_time = 0
           if user_log :
             total_customer_time = 0

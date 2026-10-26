@@ -101,14 +101,14 @@ def clear_user_session():
     for key in keys_to_clear:
         session.pop(key, None)
         
-FROZEN_START = datetime(2026, 10, 24, 1, 20, 0)
-_BOOT = time.monotonic()
+# FROZEN_START = datetime(2026, 10, 24, 1, 20, 0)
+# _BOOT = time.monotonic()
 
 def cairo_now():
   # Same convention as the seed: UTC+3
-  elapsed = time.monotonic() - _BOOT
-  return (FROZEN_START + timedelta(seconds=elapsed)).replace(microsecond=0)
-  return datetime.strptime("2026-10-24 1:20:00", "%Y-%m-%d %H:%M:%S")
+  # elapsed = time.monotonic() - _BOOT
+  # return (FROZEN_START + timedelta(seconds=elapsed)).replace(microsecond=0)
+  # return datetime.strptime("2026-10-24 1:20:00", "%Y-%m-%d %H:%M:%S")
   return datetime.now() + timedelta(hours=3)
 
 def apology(message, code=400):

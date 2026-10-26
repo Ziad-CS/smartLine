@@ -21,27 +21,13 @@ import sqlite3
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-def init_db(db_name="smartline.db"):
-  return
-  db_file = os.path.join(BASE_DIR, db_name)
+def run_sql_file(db_path, sql_path):
+  with open(sql_path, "r", encoding="utf-8") as f:
+    script = f.read()
+  conn = sqlite3.connect(db_path)
   try:
-    conn = sqlite3.connect(db_file)
-  except Exception:
-    return
-  try:
-    for sql_filename in ("schema.sql", "seed.sql"):
-      sql_file = os.path.join(BASE_DIR, sql_filename)
-      if os.path.exists(sql_file):
-        with open(sql_file, "r", encoding="utf-8") as f:
-          script = f.read()
-        if script.strip():
-          conn.executescript(script)
-      conn.commit()
-  except Exception:
-    conn.close()
-    if os.path.exists(db_file):
-      os.remove(db_file)
-    raise
+    conn.executescript(script)
+    conn.commit()
   finally:
     conn.close()
 

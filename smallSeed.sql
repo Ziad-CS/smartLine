@@ -566,7 +566,7 @@
   UPDATE users 
   SET created_at = datetime(
       '2000-01-01 00:00:00', 
-      '+' || (ABS(RANDOM()) % (strftime('%s', now) - strftime('%s', '2000-01-01 00:00:00'))) || ' seconds', 
+      '+' || (ABS(RANDOM()) % (strftime('%s', 'now') - strftime('%s', '2000-01-01 00:00:00'))) || ' seconds', 
       '+3 hours'
   );
 
@@ -946,7 +946,7 @@
   (113, 143, 'WJXQ3U9Y'),
   (61, 148, 'P6N26T7U'),
   (171, 149, 'XXMFEPZU'),
-  (246, 152, 'XXMFEPZU'),
+  (246, 152, 'XXM8EPZU'),
   (35, 1, 'RFJMQG6S'),
   (220, 2, '9666SGQQ'),
   (39, 121, '6JFPWR6B'),
@@ -1033,7 +1033,7 @@
     CREATE TEMP TABLE _m AS
     SELECT m.id AS manager_id,
           CAST(strftime('%s', u.created_at) AS INTEGER) AS u_epoch,
-          CAST(strftime('%s', now, '+3 hours') AS INTEGER) AS now_epoch,
+          CAST(strftime('%s', 'now', '+3 hours') AS INTEGER) AS now_epoch,
           CASE WHEN EXISTS (SELECT 1 FROM providers p WHERE p.user_id = m.user_id AND p.id % 20 < 17)
                 THEN 0.25 ELSE 0.0 END AS lo,
           ABS(RANDOM() % 1000000) / 1000000.0 AS r
@@ -1051,7 +1051,7 @@
     SELECT p.id AS provider_id,
           CAST(strftime('%s', u.created_at) AS INTEGER) AS u_epoch,
           CAST(strftime('%s', m.created_at) AS INTEGER) AS m_epoch,
-          CAST(strftime('%s', now, '+3 hours') AS INTEGER) AS now_epoch,
+          CAST(strftime('%s', 'now', '+3 hours') AS INTEGER) AS now_epoch,
           (p.id % 20 < 17) AS first_flag,
           ABS(RANDOM() % 1000000) / 1000000.0 AS r
     FROM providers p
@@ -1129,7 +1129,7 @@
     FROM manager_weights mw
     JOIN repeater r ON r.num <= mw.weight
   )
-  INSERT INTO providers (user_id, manager_id, invite_code, created_at)
+  INSERT OR IGNORE INTO providers (user_id, manager_id, invite_code, created_at)
   SELECT pu.uid,
          m.id,
          -- 4 random chars + 4 deterministic unique chars derived from pu.uid (Zero collision risk)
@@ -1442,10 +1442,10 @@
 
   -- 0) Helpers
   CREATE TEMP TABLE _now AS
-  SELECT now AS ts,
-        date(now,'+3 hours')     AS today,
-        CAST(strftime('%H',now,'+3 hours') AS INT)*60
-      + CAST(strftime('%M',now,'+3 hours') AS INT)  AS nowm;
+  SELECT datetime('now') AS ts,
+        date('now','+3 hours')     AS today,
+        CAST(strftime('%H','now','+3 hours') AS INT)*60
+      + CAST(strftime('%M','now','+3 hours') AS INT)  AS nowm;
 
   CREATE TEMP TABLE _nums AS
   WITH RECURSIVE r(k) AS (SELECT 1 UNION ALL SELECT k+1 FROM r WHERE k < 1000)
@@ -1727,7 +1727,6 @@
   DROP TABLE _ent;
   DROP TABLE _ent2;
   DROP TABLE _hid;
-  DROP TABLE _heavy;
   DROP TABLE _qc;
   DROP TABLE _hv;
   DROP TABLE _hcount;
@@ -2328,14 +2327,12 @@
   DROP TABLE IF EXISTS _gap;
   DROP TABLE IF EXISTS _pick;
 
-  -- 0)
   CREATE TEMP TABLE _tp AS
   SELECT p.id AS pid, c.id AS company_id
   FROM providers p
   JOIN companies c ON c.manager_id = p.manager_id
   WHERE p.user_id = 171;
 
-  -- 1)
   INSERT INTO queues (provider_id, company_id, status, service_id, created_at, closed_at)
   SELECT t.pid, t.company_id, 'active',
     (SELECT s.id FROM services s
@@ -2348,7 +2345,6 @@
     SELECT 1 FROM queues q WHERE q.provider_id = t.pid AND q.status = 'active'
   );
 
-  -- 2)
   CREATE TEMP TABLE _tq AS
   SELECT q.id AS qid, q.company_id, q.created_at AS qc
   FROM queues q
@@ -2357,28 +2353,22 @@
   ORDER BY q.id DESC
   LIMIT 1;
 
-  -- 3)
   CREATE TEMP TABLE _gap AS
   SELECT tq.qid, tq.company_id, tq.qc,
     (julianday('now', '+3 hours') - julianday(tq.qc)) * 86400.0 / 12.0 AS gap
   FROM _tq tq
   WHERE NOT EXISTS (SELECT 1 FROM queue_entries e WHERE e.queue_id = tq.qid);
 
-  -- 4)
   CREATE TEMP TABLE _pick AS
-  SELECT ROW_NUMBER() OVER (ORDER BY r) AS k, uid, uname, guest
+  SELECT ROW_NUMBER() OVER (ORDER BY RANDOM()) AS k, uid, uname, guest
   FROM (
-    SELECT u.id AS uid,
-          u.name AS uname,
-          (ABS(RANDOM()) % 4 = 0) AS guest,
-          RANDOM() AS r
+    SELECT u.id AS uid, u.name AS uname, (ABS(RANDOM()) % 4 = 0) AS guest
     FROM users u
     WHERE u.id <> 171
     ORDER BY RANDOM()
     LIMIT 11
   );
 
-  -- 5)
   INSERT INTO queue_entries (queue_id, user_id, user_name, position, status, joined_at, ip_address)
   SELECT g.qid,
     CASE WHEN p.guest = 1 THEN NULL ELSE p.uid END,
@@ -2393,7 +2383,6 @@
   CROSS JOIN _pick p
   ORDER BY p.k;
 
-  -- 6)
   INSERT INTO service_logs (queue_id, queue_entry_id, user_id, user_name, company_name,
                             start_time, end_time, ip_address, stars)
   SELECT e.queue_id, e.id, e.user_id, e.user_name, co.name,
@@ -2407,7 +2396,7 @@
         ELSE NULL
     END
   FROM queue_entries e
-  JOIN _gap g      ON g.qid = e.queue_id
+  JOIN _gap g       ON g.qid = e.queue_id
   JOIN companies co ON co.id = g.company_id
   WHERE e.status IN ('done', 'serving');
 
@@ -2428,4 +2417,5 @@
   DROP TABLE _pick;
 
   COMMIT;
+
 

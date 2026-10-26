@@ -1482,7 +1482,7 @@
   CREATE TEMP TABLE _pr1 AS
   SELECT b.pid, b.pstart, b.company_id,
     MAX(0, MIN(CAST(julianday(n.today) - julianday(date(b.pstart)) AS INT), 730)) AS hist_span,
-    15 + ABS(RANDOM()) % 11      AS rate_m,
+    12 + ABS(RANDOM()) % 9      AS rate_m,
     90 + ABS(RANDOM()) % 21      AS noise,          -- 90..110 %
     co.open_m, co.span, co.share_pct,
     (n.nowm - co.open_m + 1440) % 1440 AS offset_now
@@ -1633,7 +1633,7 @@
       WHEN status = 'closed' THEN
         MIN(120, MAX(1, CAST(lsec / svc_q *
               CASE WHEN heavy_p = 1 THEN 0.92 + (ABS(RANDOM()) % 9) / 100.0
-                  ELSE 0.55 + (ABS(RANDOM()) % 41) / 100.0 END AS INT)))
+                  ELSE 0.20 + (ABS(RANDOM()) % 41) / 100.0 END AS INT)))
       ELSE
         MIN(120, CAST(lsec / svc_q AS INT) + 1
               + ABS(RANDOM()) % CASE WHEN heavy_p = 1 THEN 7 ELSE 5 END)

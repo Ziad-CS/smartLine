@@ -118,14 +118,13 @@ let navigating_btn = false;
 let navigating = false;
 
 document.querySelectorAll(".category_btn").forEach(btn => {
-  btn.addEventListener("click", function() {
+  btn.addEventListener("click", function(e) {
     if (navigating_btn || navigating) {
       e.preventDefault();
       return;
     }
-    if (link.target === "_blank" || link.origin !== location.origin) return;
 
-    navigating = true;
+    navigating_btn = true;
     document.body.classList.add("is-navigating");
     document.querySelector(".category_btn.active").classList.remove("active");
     this.classList.add("active");

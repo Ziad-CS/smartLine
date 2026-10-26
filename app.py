@@ -414,13 +414,13 @@ def findQueue() :
 
   user_ids = list(set(user_ids))
 
-  # 4. Get all user logs (user_log)
-  user_logs_by_user = {}
-  if user_ids:
-      placeholders_u = ','.join(['?'] * len(user_ids))
-      all_user_logs = db.execute(f"SELECT * FROM service_logs WHERE end_time IS NOT NULL AND user_id IN ({placeholders_u}) ORDER BY start_time DESC", *user_ids)
-      for log in all_user_logs:
-          user_logs_by_user.setdefault(log["user_id"], []).append(log)
+  # # 4. Get all user logs (user_log)
+  # user_logs_by_user = {}
+  # if user_ids:
+  #     placeholders_u = ','.join(['?'] * len(user_ids))
+  #     all_user_logs = db.execute(f"SELECT * FROM service_logs WHERE end_time IS NOT NULL AND user_id IN ({placeholders_u}) ORDER BY start_time DESC")
+  #     for log in all_user_logs:
+  #         user_logs_by_user.setdefault(log["user_id"], []).append(log)
 
   for company in companies :
     # queues = db.execute("SELECT queues.* FROM queues JOIN providers ON providers.id = queues.provider_id JOIN managers ON managers.id = providers.manager_id WHERE queues.status = 'active' AND managers.id = ?", company["manager_id"])

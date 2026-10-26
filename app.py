@@ -398,7 +398,7 @@ def findQueue() :
           JOIN queues ON service_logs.queue_id = queues.id
           WHERE service_logs.end_time IS NOT NULL AND service_logs.queue_id IN ({placeholders_q})
           ORDER BY service_logs.start_time DESC
-      """)
+      """, *queue_ids)
       for log in all_prov_logs:
           key = (log["provider_id"], log["company_id"])
           prov_logs_by_prov_comp.setdefault(key, []).append(log)
@@ -407,7 +407,7 @@ def findQueue() :
   lines_by_queue = {}
   user_ids = []
   if queue_ids:
-      all_lines = db.execute(f"SELECT * FROM queue_entries WHERE status != 'done' AND queue_id IN ({placeholders_q})")
+      all_lines = db.execute(f"SELECT * FROM queue_entries WHERE status != 'done' AND queue_id IN ({placeholders_q})", *queue_ids)
       for line_item in all_lines:
           lines_by_queue.setdefault(line_item["queue_id"], []).append(line_item)
           user_ids.append(line_item["user_id"])
@@ -418,7 +418,7 @@ def findQueue() :
   user_logs_by_user = {}
   if user_ids:
       placeholders_u = ','.join(['?'] * len(user_ids))
-      all_user_logs = db.execute(f"SELECT * FROM service_logs WHERE end_time IS NOT NULL AND user_id IN ({placeholders_u}) ORDER BY start_time DESC")
+      all_user_logs = db.execute(f"SELECT * FROM service_logs WHERE end_time IS NOT NULL AND user_id IN ({placeholders_u}) ORDER BY start_time DESC", *user_ids)
       for log in all_user_logs:
           user_logs_by_user.setdefault(log["user_id"], []).append(log)
 

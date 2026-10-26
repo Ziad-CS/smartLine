@@ -1905,7 +1905,7 @@
   -- 0) Scope: focus managers, their companies, and random targets
   CREATE TEMP TABLE _scope AS
   SELECT m.id AS manager_id, m.user_id AS manager_user, c.id AS company_id,
-        12 + ABS(RANDOM()) % 19 AS target_providers,   -- 12..30 providers
+        12 + ABS(RANDOM()) % 9 AS target_providers,   -- 12..20 providers
         45 + ABS(RANDOM()) % 51 AS share_pct           -- 45..95 % working
   FROM managers m
   JOIN companies c ON c.manager_id = m.id
@@ -2298,4 +2298,3 @@
 
   COMMIT;
 
-VACUUM;

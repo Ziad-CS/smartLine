@@ -312,9 +312,6 @@ def findQueue() :
   FROM companies_fts
   JOIN companies ON companies.id = companies_fts.company_id
   LEFT JOIN managers ON companies.manager_id = managers.id
-  LEFT JOIN providers ON managers.id = providers.manager_id
-  LEFT JOIN queues ON queues.provider_id = providers.id
-  LEFT JOIN service_logs ON queues.id = service_logs.queue_id
   """
   params = []
   if q:

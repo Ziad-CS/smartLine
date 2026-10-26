@@ -266,6 +266,10 @@ def logout():
 
 
 # For customer Role
+with open("static/countries.json", "r", encoding="utf-8") as file:
+    countries_out = json.load(file)
+with open("static/EGcities.json", "r", encoding="utf-8") as file:
+  cities_out = json.load(file)
 
 @app.route("/customer/findQueue", methods=["GET"])
 def findQueue() :
@@ -339,6 +343,19 @@ def findQueue() :
 
   companies = db.execute(sql, *params)
 
+  ratings = {
+    r["comp_id"]: (r["rate"], r["reviews"])
+    for r in db.execute("""
+      SELECT queues.company_id AS comp_id,
+        AVG(service_logs.stars) AS rate,
+        COUNT(service_logs.stars) AS reviews
+      FROM service_logs
+      JOIN queues ON queues.id = service_logs.queue_id
+      WHERE service_logs.stars IS NOT NULL
+      GROUP BY queues.company_id
+    """)
+  }
+
   for company in companies :
     match company["category"] :
       case 'clinics':
@@ -354,27 +371,9 @@ def findQueue() :
       case 'other':
         company["category"] = 'Other'
 
-  with open("static/countries.json", "r", encoding="utf-8") as file:
-    countries = json.load(file)
-  with open("static/EGcities.json", "r", encoding="utf-8") as file:
-    cities = json.load(file)
-
   for company in companies :
     queues = db.execute("SELECT queues.* FROM queues JOIN providers ON providers.id = queues.provider_id JOIN managers ON managers.id = providers.manager_id WHERE queues.status = 'active' AND managers.id = ?", company["manager_id"])
-    logs = db.execute("SELECT service_logs.stars FROM service_logs JOIN queues ON queues.id = service_logs.queue_id WHERE queues.company_id = ? AND stars IS NOT NULL", company["comp_id"])
     open_counters = len(queues)
-    if logs :
-      reviews = 0
-      rate = 0
-      for log in logs :
-        if log["stars"] :
-          rate += int(log["stars"])
-          reviews += 1
-      if reviews :
-        rate /= reviews
-    else :
-      reviews = 0
-      rate = 0
 
     lowest_time = float('inf')
     # lowest_time_id = -1
@@ -407,10 +406,11 @@ def findQueue() :
       lowest_time = 0
     company["open_counters"] = open_counters
     company["lowest_time"] = lowest_time
-    company["rate"] = rate
+    rate, reviews = ratings.get(company["comp_id"], (0,0))
+    company["rate"] = rate or 0
     company["reviews"] = reviews
 
-  return render_template("findQueue.html", companies=companies, countries=countries, cities=cities)
+  return render_template("findQueue.html", companies=companies, countries=countries_out, cities=cities_out)
 
 
 @app.route("/customer/company/<comp_id>", methods=["GET"])
@@ -2829,8 +2829,7 @@ def updateInfoManager() :
 
   country = request.form.get('country', "").strip().lower()
   found = ""
-  with open("static/countries.json", "r", encoding="utf-8") as file:
-    countries = json.load(file)
+
   for dec in countries :
     if dec["name"].strip().lower() == country :
       found = country

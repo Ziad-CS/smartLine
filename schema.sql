@@ -113,15 +113,4 @@ CREATE TRIGGER companies_au AFTER UPDATE ON companies BEGIN
     SET name = new.name, description = new.description, category = new.category 
     WHERE company_id = old.id;
 END;
-
-CREATE INDEX IF NOT EXISTS idx_queues_company_status ON queues(company_id, status);
-CREATE INDEX IF NOT EXISTS idx_queues_provider ON queues(provider_id);
-CREATE INDEX IF NOT EXISTS idx_queues_status ON queues(status);
-CREATE INDEX IF NOT EXISTS idx_providers_manager ON providers(manager_id);
-CREATE INDEX IF NOT EXISTS idx_companies_loc ON companies(country, city, category);
-CREATE INDEX IF NOT EXISTS idx_qe_queue_status ON queue_entries(queue_id, status);
-CREATE INDEX IF NOT EXISTS idx_qe_user ON queue_entries(user_id);
-CREATE INDEX IF NOT EXISTS idx_sl_queue ON service_logs(queue_id);
-CREATE INDEX IF NOT EXISTS idx_sl_user_end ON service_logs(user_id, end_time);
-CREATE INDEX IF NOT EXISTS idx_sl_stars ON service_logs(stars);
 -- sqlite3 smartline.db < schema.sql

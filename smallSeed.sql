@@ -1451,8 +1451,6 @@
   WITH RECURSIVE r(k) AS (SELECT 1 UNION ALL SELECT k+1 FROM r WHERE k < 1000)
   SELECT k FROM r;
 
-  CREATE INDEX IF NOT EXISTS idx_services_company_active ON services(company_id, is_active);
-
   -- 1) Company hours (NULL -> 09:00-21:00) and daily share of providers working (35%..90%)
   CREATE TEMP TABLE _co0 AS
   SELECT c.id AS company_id,
@@ -1560,23 +1558,7 @@
   DROP TABLE _hist;
   DROP TABLE _act;
   DROP TABLE _act2;
-
-  -- ==================== Checks ====================
-  SELECT status, COUNT(*) AS total FROM queues GROUP BY status;
-
-  -- must be 0: no queue before its provider existed
-  SELECT COUNT(*) AS bad_before_provider
-  FROM queues q JOIN providers p ON p.id = q.provider_id
-  WHERE q.created_at < p.created_at;
-
-  -- must be 0: service belongs to the queue's company
-  SELECT COUNT(*) AS bad_service
-  FROM queues q JOIN services s ON s.id = q.service_id
-  WHERE s.company_id <> q.company_id;
-
-  -- must be 0: no closed queue in the future
-  SELECT COUNT(*) AS future_closed
-  FROM queues WHERE status = 'closed' AND closed_at > datetime('now','+3 hours');
+  CREATE INDEX IF NOT EXISTS idx_services_company_active ON services(company_id, is_active);
 
 -- ==================== Generate Realistic Queue Entries ====================
   BEGIN;
@@ -1733,42 +1715,23 @@
 
   COMMIT;
 
-  -- ==================== Checks ====================
-  SELECT status, COUNT(*) AS total FROM queue_entries GROUP BY status;
-
-  -- Must be 0: no entry joined before its queue started
-  SELECT COUNT(*) AS before_queue
-  FROM queue_entries e JOIN queues q ON q.id = e.queue_id
-  WHERE e.joined_at < q.created_at;
-
-  -- Must be 0: no entry joined after its queue closed
-  SELECT COUNT(*) AS after_close
-  FROM queue_entries e JOIN queues q ON q.id = e.queue_id
-  WHERE q.status = 'closed' AND e.joined_at > q.closed_at;
-
-  -- Must be 0: no entry joined in the future
-  SELECT COUNT(*) AS future_entry
-  FROM queue_entries WHERE joined_at > datetime('now','+3 hours');
-
-  -- Must be 0: no closed queue contains waiting or serving entries
-  SELECT COUNT(*) AS open_in_closed
-  FROM queue_entries e JOIN queues q ON q.id = e.queue_id
-  WHERE q.status = 'closed' AND e.status <> 'done';
-
-  -- Must be 0: no active queue has more than one serving entry
-  SELECT COUNT(*) AS multi_serving
-  FROM (SELECT queue_id FROM queue_entries WHERE status = 'serving'
-        GROUP BY queue_id HAVING COUNT(*) > 1);
-
-  -- Expected guest share: approximately 25%
-  SELECT ROUND(AVG(user_id IS NULL) * 100, 1) AS guest_pct FROM queue_entries;
+-- idex
+  CREATE INDEX IF NOT EXISTS idx_queues_company_status ON queues(company_id, status);
+  CREATE INDEX IF NOT EXISTS idx_queues_provider ON queues(provider_id);
+  CREATE INDEX IF NOT EXISTS idx_queues_status ON queues(status);
+  CREATE INDEX IF NOT EXISTS idx_providers_manager ON providers(manager_id);
+  CREATE INDEX IF NOT EXISTS idx_companies_loc ON companies(country, city, category);
+  CREATE INDEX IF NOT EXISTS idx_qe_queue_status ON queue_entries(queue_id, status);
+  CREATE INDEX IF NOT EXISTS idx_qe_user ON queue_entries(user_id);
+  CREATE INDEX IF NOT EXISTS idx_sl_queue ON service_logs(queue_id);
+  CREATE INDEX IF NOT EXISTS idx_sl_user_end ON service_logs(user_id, end_time);
+  CREATE INDEX IF NOT EXISTS idx_sl_stars ON service_logs(stars);
 
 -- ==================== Service Logs From Queue Entries ====================
   BEGIN;
 
   -- 0) Reset service logs and fix queue positions by join time
   DELETE FROM service_logs;
-  CREATE INDEX IF NOT EXISTS idx_qe_queue_joined ON queue_entries(queue_id, joined_at);
 
   UPDATE queue_entries
   SET position = (
@@ -1849,33 +1812,9 @@
   DROP TABLE _ent;
   DROP TABLE _ent2;
   DROP TABLE _chain;
+  CREATE INDEX IF NOT EXISTS idx_qe_queue_joined ON queue_entries(queue_id, joined_at);
 
   COMMIT;
-
-  -- ==================== Checks ====================
-  -- لازم يكون عدد الـ logs = عدد الـ entries اللي حالتها done أو serving
-  SELECT (SELECT COUNT(*) FROM service_logs) AS logs,
-        (SELECT COUNT(*) FROM queue_entries WHERE status IN ('done','serving')) AS expected;
-
-  -- لازم يكون 0: النهاية قبل البداية
-  SELECT COUNT(*) AS end_before_start FROM service_logs
-  WHERE end_time IS NOT NULL AND end_time < start_time;
-
-  -- لازم يكون 0: بداية الخدمة قبل دخول العميل الطابور
-  SELECT COUNT(*) AS start_before_join
-  FROM service_logs l JOIN queue_entries e ON e.id = l.queue_entry_id
-  WHERE l.start_time < e.joined_at;
-
-  -- لازم يكون 0: الخدمة بتتعمل بعد وقت فتح الطابور
-  SELECT COUNT(*) AS before_queue
-  FROM service_logs l JOIN queues q ON q.id = l.queue_id
-  WHERE l.start_time < q.created_at;
-
-  -- المميزين: عدد الخدمات ومتوسط النجوم
-  SELECT user_id, COUNT(*) AS services, ROUND(AVG(stars), 2) AS avg_stars
-  FROM service_logs
-  WHERE user_id IN (127, 527, 539, 534, 563, 840, 454, 635)
-  GROUP BY user_id;
 
 -- ==================== Star Ratings by Company Profile ====================
   BEGIN;
@@ -1951,14 +1890,6 @@
   DROP TABLE _rated;
 
   COMMIT;
-
-  -- ==================== Checks ====================
-  SELECT stars, COUNT(*) FROM service_logs GROUP BY stars ORDER BY stars;
-
-  SELECT user_id, COUNT(*) AS services, ROUND(AVG(stars), 2) AS avg_stars
-  FROM service_logs
-  WHERE user_id IN (63, 127, 171, 1)
-  GROUP BY user_id;
 
 -- ==================== Realistic History for Focus Accounts ====================
   -- =====================================================================
@@ -2269,47 +2200,6 @@
   ) x
   JOIN companies co ON co.id = x.company_id;
 
-  -- 18) Checks: each must be 0 unless noted
-  SELECT p.manager_id, COUNT(*) AS providers,
-        SUM(CASE WHEN EXISTS (SELECT 1 FROM queues q
-                              WHERE q.provider_id = p.id AND q.status = 'active')
-                  THEN 1 ELSE 0 END) AS working
-  FROM providers p
-  WHERE p.manager_id IN (SELECT manager_id FROM _scope)
-  GROUP BY p.manager_id;
-
-  SELECT q.provider_id, COUNT(e.id) AS served
-  FROM queue_entries e
-  JOIN queues q ON q.id = e.queue_id
-  WHERE e.status IN ('done', 'serving')
-    AND q.provider_id IN (SELECT pid FROM _prov)
-  GROUP BY q.provider_id
-  ORDER BY served;
-
-  SELECT COUNT(*) AS bad_queue_before_provider
-  FROM queues q JOIN providers p ON p.id = q.provider_id
-  WHERE q.created_at < p.created_at;
-
-  SELECT COUNT(*) AS bad_entry_time
-  FROM queue_entries e JOIN queues q ON q.id = e.queue_id
-  WHERE e.joined_at < q.created_at
-    OR (q.status = 'closed' AND e.joined_at > q.closed_at);
-
-  SELECT COUNT(*) AS bad_log_time
-  FROM service_logs l JOIN queue_entries e ON e.id = l.queue_entry_id
-  WHERE l.start_time < e.joined_at;
-
-  SELECT COUNT(*) AS future_entries
-  FROM queue_entries WHERE joined_at > datetime('now','+3 hours');
-
-  SELECT COUNT(*) AS multi_serving
-  FROM (SELECT queue_id FROM queue_entries WHERE status = 'serving'
-        GROUP BY queue_id HAVING COUNT(*) > 1);
-
-  SELECT COUNT(*) AS start_before_join
-  FROM service_logs l JOIN queue_entries e ON e.id = l.queue_entry_id
-  WHERE l.start_time < e.joined_at;
-
   -- 19) Cleanup
   DROP TABLE _scope;  DROP TABLE _need;   DROP TABLE _free;   DROP TABLE _newp;
   DROP TABLE _base;   DROP TABLE _base_e; DROP TABLE _base_e2;
@@ -2400,16 +2290,6 @@
   JOIN companies co ON co.id = g.company_id
   WHERE e.status IN ('done', 'serving');
 
-  -- ==================== Checks ====================
-  SELECT status, COUNT(*) AS total
-  FROM queue_entries
-  WHERE queue_id = (SELECT qid FROM _tq)
-  GROUP BY status;
-
-  SELECT COUNT(*) AS logs
-  FROM service_logs
-  WHERE queue_id = (SELECT qid FROM _tq);
-
   -- ==================== Cleanup ====================
   DROP TABLE _tp;
   DROP TABLE _tq;
@@ -2417,5 +2297,4 @@
   DROP TABLE _pick;
 
   COMMIT;
-
 

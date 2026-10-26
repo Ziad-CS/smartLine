@@ -21,15 +21,15 @@ import sqlite3
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# def run_sql_file(db_path, sql_path):
-#   with open(sql_path, "r", encoding="utf-8") as f:
-#     script = f.read()
-#   conn = sqlite3.connect(db_path)
-#   try:
-#     conn.executescript(script)
-#     conn.commit()
-#   finally:
-#     conn.close()
+def run_sql_file(db_path, sql_path):
+  with open(sql_path, "r", encoding="utf-8") as f:
+    script = f.read()
+  conn = sqlite3.connect(db_path)
+  try:
+    conn.executescript(script)
+    conn.commit()
+  finally:
+    conn.close()
 
 SHIFT_COLUMNS = [
     ("users", "created_at"), ("managers", "created_at"),

@@ -112,15 +112,46 @@ document.querySelectorAll(".category_btn").forEach(btn => {
     btn.classList.remove("active");
   }
 });
+// fix spam to open page
+
+let navigating_btn = false;
+let navigating = false;
 
 document.querySelectorAll(".category_btn").forEach(btn => {
   btn.addEventListener("click", function() {
+    if (navigating_btn || navigating) {
+      e.preventDefault();
+      return;
+    }
+    if (link.target === "_blank" || link.origin !== location.origin) return;
+
+    navigating = true;
+    document.body.classList.add("is-navigating");
     document.querySelector(".category_btn.active").classList.remove("active");
     this.classList.add("active");
     const pramams = new URLSearchParams(window.location.search)
     pramams.set("category", this.dataset.cat);
     window.location.href = `${window.location.pathname}?${pramams.toString()}`
   });
+});
+
+document.addEventListener('click', (e) => {
+  const link = e.target.closest('a[href]');
+  if (!link) return;
+  if (navigating || navigating_btn) {
+    e.preventDefault();
+    return;
+  }
+  if (link.target === '_blank' || link.origin !== location.origin) return;
+
+  navigating = true;
+  document.body.classList.add('is-navigating');
+}, true);
+
+window.addEventListener("pageshow", () => {
+  navigating = false;
+  navigating_btn = false;
+  document.body.classList.remove("is-navigating");
 });
 
 // * search in find queue
@@ -976,25 +1007,4 @@ document.addEventListener("DOMContentLoaded", () => {
   avg.addEventListener("input", update);
   paces.forEach((p) => p.addEventListener("change", update));
   update();
-});
-
-// fix spam to open page
-let navigating = false;
-
-document.addEventListener('click', (e) => {
-  const link = e.target.closest('a[href]');
-  if (!link) return;
-  if (navigating) {
-    e.preventDefault();
-    return;
-  }
-  if (link.target === '_blank' || link.origin !== location.origin) return;
-
-  navigating = true;
-  document.body.classList.add('is-navigating');
-}, true);
-
-window.addEventListener('pageshow', () => {
-  navigating = false;
-  document.body.classList.remove('is-navigating');
 });

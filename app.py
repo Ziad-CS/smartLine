@@ -3278,7 +3278,6 @@ def updateInfoProfile() :
 
 
 @app.route("/api/get-cities")
-@login_required
 def get_cities():
   country = request.args.get("country", "").lower()
   return getCities(country)

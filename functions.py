@@ -258,6 +258,12 @@ def estimation(prov_est, customer_est = None) :
 
 
 def getCities(country) :
+  if not country :
+    file_path = os.path.join(os.path.dirname(__file__), "static", "EGcities.json")
+    with open(file_path, "r", encoding="utf-8") as file:
+      cities = json.load(file)
+      return jsonify(cities), 200
+    
   if country != 'egypt' and country != 'palestinian territory occupied':
     api_url = f"https://countriesnow.space/api/v0.1/countries/cities"
     payload = {"country" : country}

@@ -1485,4 +1485,4 @@ main {
 
 /* fix spam to open page */
 .is-navigating { cursor: progress; }
-.is-navigating a, .is-navigating button, .category_btn { pointer-events: none; opacity: .6; }
+.is-navigating a, .is-navigating button, .is-navigating .category_btn { pointer-events: none; opacity: .6; }

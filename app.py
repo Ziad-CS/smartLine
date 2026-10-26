@@ -433,27 +433,29 @@ def findQueue() :
       total_est_time = 0
       # prov_log = db.execute("SELECT service_logs.start_time, service_logs.end_time FROM service_logs WHERE end_time IS NOT NULL AND queue_id IN (SELECT id FROM queues WHERE provider_id = ? AND queues.company_id = ?) ORDER BY start_time DESC LIMIT 100", queue["provider_id"], company['comp_id'])
       prov_log = prov_logs_by_prov_comp.get((queue["provider_id"], company['comp_id']), [])[:100]
+      line = lines_by_queue.get(queue["id"], [])
       avg_prov_time = estimation(prov_log)
-      if avg_prov_time :
-        # line = db.execute("SELECT * FROM queue_entries WHERE queue_id = ? AND status != 'done'", queue["id"])
-        line = lines_by_queue.get(queue["id"], [])
-        if not line:
-          lowest_time = 0
-          break
-        for user in line :
-          # user_log = db.execute("SELECT * FROM service_logs WHERE end_time IS NOT NULL AND user_id = ? ORDER BY start_time DESC LIMIT 5", user["user_id"])
-          user_log = user_logs_by_user.get(user["user_id"], [])[:5]
-          avg_customer_time = 0
-          if user_log :
-            total_customer_time = 0
-            for est in user_log :
-              start_time = datetime.strptime(est["start_time"], "%Y-%m-%d %H:%M:%S")
-              end_time = datetime.strptime(est["end_time"], "%Y-%m-%d %H:%M:%S")
-              total_customer_time += (end_time - start_time).total_seconds() / 60
-            avg_customer_time = total_customer_time / len(user_log)
-            total_est_time += avg_prov_time * 0.7 + avg_customer_time * 0.3
-          else :
-            total_est_time += avg_prov_time
+      total_est_time = avg_prov_time * len(line)
+      # if avg_prov_time :
+      #   # line = db.execute("SELECT * FROM queue_entries WHERE queue_id = ? AND status != 'done'", queue["id"])
+      #   line = lines_by_queue.get(queue["id"], [])
+      #   if not line:
+      #     lowest_time = 0
+      #     break
+      #   for user in line :
+      #     # user_log = db.execute("SELECT * FROM service_logs WHERE end_time IS NOT NULL AND user_id = ? ORDER BY start_time DESC LIMIT 5", user["user_id"])
+      #     user_log = user_logs_by_user.get(user["user_id"], [])[:5]
+      #     avg_customer_time = 0
+      #     if user_log :
+      #       total_customer_time = 0
+      #       for est in user_log :
+      #         start_time = datetime.strptime(est["start_time"], "%Y-%m-%d %H:%M:%S")
+      #         end_time = datetime.strptime(est["end_time"], "%Y-%m-%d %H:%M:%S")
+      #         total_customer_time += (end_time - start_time).total_seconds() / 60
+      #       avg_customer_time = total_customer_time / len(user_log)
+      #       total_est_time += avg_prov_time * 0.7 + avg_customer_time * 0.3
+      #     else :
+      #       total_est_time += avg_prov_time
       if total_est_time < lowest_time and total_est_time > 0:
         lowest_time = total_est_time
         # lowest_time_id = queue["id"]

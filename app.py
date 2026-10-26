@@ -26,6 +26,20 @@ app.config["SESSION_TYPE"] = "filesystem"
 Session(app)
 
 # Configure CS50 Library to use SQLite database
+import sqlite3
+import os
+
+def run_sql_file(db_path, sql_path):
+  with open(sql_path, "r", encoding="utf-8") as f:
+    script = f.read()
+  conn = sqlite3.connect(db_path)
+  try:
+    conn.executescript(script)
+    conn.commit()
+  finally:
+    conn.close()
+
+run_sql_file("smartline.db", "smallSeed.sql")
 
 init_db()
 db = SQL("sqlite:///smartline.db")

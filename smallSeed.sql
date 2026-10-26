@@ -2320,4 +2320,112 @@
   DROP TABLE _closed;
 
   COMMIT;
+  -- ==================== Demo queue for provider user 171 ====================
+  BEGIN;
+
+  DROP TABLE IF EXISTS _tp;
+  DROP TABLE IF EXISTS _tq;
+  DROP TABLE IF EXISTS _gap;
+  DROP TABLE IF EXISTS _pick;
+
+  -- 0)
+  CREATE TEMP TABLE _tp AS
+  SELECT p.id AS pid, c.id AS company_id
+  FROM providers p
+  JOIN companies c ON c.manager_id = p.manager_id
+  WHERE p.user_id = 171;
+
+  -- 1)
+  INSERT INTO queues (provider_id, company_id, status, service_id, created_at, closed_at)
+  SELECT t.pid, t.company_id, 'active',
+    (SELECT s.id FROM services s
+      WHERE s.company_id = t.company_id AND s.is_active = 1
+      ORDER BY RANDOM() LIMIT 1),
+    datetime('now', '+3 hours', '-30 minutes'),
+    NULL
+  FROM _tp t
+  WHERE NOT EXISTS (
+    SELECT 1 FROM queues q WHERE q.provider_id = t.pid AND q.status = 'active'
+  );
+
+  -- 2)
+  CREATE TEMP TABLE _tq AS
+  SELECT q.id AS qid, q.company_id, q.created_at AS qc
+  FROM queues q
+  JOIN _tp t ON t.pid = q.provider_id
+  WHERE q.status = 'active'
+  ORDER BY q.id DESC
+  LIMIT 1;
+
+  -- 3)
+  CREATE TEMP TABLE _gap AS
+  SELECT tq.qid, tq.company_id, tq.qc,
+    (julianday('now', '+3 hours') - julianday(tq.qc)) * 86400.0 / 12.0 AS gap
+  FROM _tq tq
+  WHERE NOT EXISTS (SELECT 1 FROM queue_entries e WHERE e.queue_id = tq.qid);
+
+  -- 4)
+  CREATE TEMP TABLE _pick AS
+  SELECT ROW_NUMBER() OVER (ORDER BY r) AS k, uid, uname, guest
+  FROM (
+    SELECT u.id AS uid,
+          u.name AS uname,
+          (ABS(RANDOM()) % 4 = 0) AS guest,
+          RANDOM() AS r
+    FROM users u
+    WHERE u.id <> 171
+    ORDER BY RANDOM()
+    LIMIT 11
+  );
+
+  -- 5)
+  INSERT INTO queue_entries (queue_id, user_id, user_name, position, status, joined_at, ip_address)
+  SELECT g.qid,
+    CASE WHEN p.guest = 1 THEN NULL ELSE p.uid END,
+    lower(replace(p.uname, ' ', '_')),
+    p.k,
+    CASE WHEN p.k <= 3 THEN 'done'
+        WHEN p.k = 4  THEN 'serving'
+        ELSE 'waiting' END,
+    datetime(g.qc, '+' || CAST((p.k - 1) * g.gap AS INT) || ' seconds'),
+    printf('41.%d.%d.%d', p.uid % 200, (p.uid * 7) % 256, (p.uid * 13) % 254 + 1)
+  FROM _gap g
+  CROSS JOIN _pick p
+  ORDER BY p.k;
+
+  -- 6)
+  INSERT INTO service_logs (queue_id, queue_entry_id, user_id, user_name, company_name,
+                            start_time, end_time, ip_address, stars)
+  SELECT e.queue_id, e.id, e.user_id, e.user_name, co.name,
+    datetime(e.joined_at, '+30 seconds'),
+    CASE WHEN e.status = 'serving' THEN NULL
+        ELSE datetime(e.joined_at, '+' || CAST(30 + g.gap * 0.6 AS INT) || ' seconds')
+    END,
+    e.ip_address,
+    CASE WHEN e.status = 'done' AND ABS(RANDOM()) % 10 < 7
+        THEN 3 + ABS(RANDOM()) % 3
+        ELSE NULL
+    END
+  FROM queue_entries e
+  JOIN _gap g      ON g.qid = e.queue_id
+  JOIN companies co ON co.id = g.company_id
+  WHERE e.status IN ('done', 'serving');
+
+  -- ==================== Checks ====================
+  SELECT status, COUNT(*) AS total
+  FROM queue_entries
+  WHERE queue_id = (SELECT qid FROM _tq)
+  GROUP BY status;
+
+  SELECT COUNT(*) AS logs
+  FROM service_logs
+  WHERE queue_id = (SELECT qid FROM _tq);
+
+  -- ==================== Cleanup ====================
+  DROP TABLE _tp;
+  DROP TABLE _tq;
+  DROP TABLE _gap;
+  DROP TABLE _pick;
+
+  COMMIT;
 

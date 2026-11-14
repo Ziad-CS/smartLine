@@ -163,7 +163,6 @@ smartLine/
 </details>
 
 ## What's next
-## What's next
 
 - **Predictive insights:** apply machine learning to the service history to forecast wait times and busy periods, going beyond what the current estimates do.
 - **Security hardening:** a proper security review and penetration testing of the platform.
